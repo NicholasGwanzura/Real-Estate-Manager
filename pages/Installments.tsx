@@ -2,13 +2,18 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Sale, Payment, Stand } from '../types';
-import { Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, X } from 'lucide-react';
+import { Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, X, Receipt, Printer, AlertTriangle } from 'lucide-react';
 
 export const Installments: React.FC = () => {
-  const { sales, payments, stands, developers, addPayment } = useApp();
+  const { sales, payments, stands, developers, addPayment, clients } = useApp();
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedSaleForPayment, setSelectedSaleForPayment] = useState<string | null>(null);
+  
+  // Payment Form State
   const [payAmount, setPayAmount] = useState('');
+  const [manualReceiptNo, setManualReceiptNo] = useState('');
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [payRef, setPayRef] = useState('');
 
   // --- Logic to parse financing terms ---
   const getMonthsFromTerms = (terms?: string): number => {
@@ -37,8 +42,6 @@ export const Installments: React.FC = () => {
       const monthsPassed = (today.getFullYear() - saleDate.getFullYear()) * 12 + (today.getMonth() - saleDate.getMonth());
       
       // Calculate expected payments so far (Deposit + Monthly * MonthsPassed)
-      // Simplifying: Assuming Balance should be amortized over Duration.
-      // Expected Monthly = (Price - Initial Deposit) / Duration
       const initialDeposit = sale.depositPaid; 
       const principalForInstallments = sale.salePrice - initialDeposit;
       const monthlyAmount = durationMonths > 0 ? principalForInstallments / durationMonths : 0;
@@ -83,26 +86,120 @@ export const Installments: React.FC = () => {
 
   const handleOpenPay = (saleId: string) => {
       setSelectedSaleForPayment(saleId);
+      setPayDate(new Date().toISOString().split('T')[0]);
+      setManualReceiptNo('');
+      setPayRef('');
+      setPayAmount('');
       setShowPayModal(true);
+  };
+
+  const handlePrintReceipt = (payment: Payment) => {
+    const sale = sales.find(s => s.id === payment.saleId);
+    const client = clients.find(c => c.id === sale?.clientId);
+    const stand = stands.find(s => s.id === sale?.standId);
+    const dev = developers.find(d => d.id === sale?.developerId);
+    const totalPaid = payments.filter(p => p.saleId === sale?.id).reduce((acc, p) => acc + p.amount, 0); // Recalc including new payment
+    const outstanding = (sale?.salePrice || 0) - totalPaid;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt #${payment.manualReceiptNo}</title>
+          <style>
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 40px; }
+            .logo { font-size: 28px; font-weight: bold; letter-spacing: 2px; color: #000; text-transform: uppercase; }
+            .receipt-box { border: 2px solid #000; padding: 20px; margin-bottom: 20px; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .label { font-weight: bold; color: #666; }
+            .val { font-weight: bold; font-size: 1.1em; }
+            .big-amt { font-size: 2em; color: #000; text-align: center; margin: 20px 0; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 15px 0; }
+            .footer { margin-top: 40px; font-size: 12px; text-align: center; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">FineEstate</div>
+            <p>Official Payment Receipt</p>
+          </div>
+
+          <div class="receipt-box">
+             <div class="row">
+                <span class="label">Physical Receipt Book #:</span>
+                <span class="val">${payment.manualReceiptNo}</span>
+             </div>
+             <div class="row">
+                <span class="label">System Transaction Ref:</span>
+                <span class="val">${payment.reference}</span>
+             </div>
+             <div class="row">
+                <span class="label">Date:</span>
+                <span class="val">${new Date(payment.date).toLocaleString()}</span>
+             </div>
+          </div>
+
+          <div class="row">
+             <span class="label">Received From:</span>
+             <span class="val">${client?.name} (ID: ${client?.idNumber})</span>
+          </div>
+          <div class="row">
+             <span class="label">Payment For:</span>
+             <span class="val">${dev?.name} - Stand #${stand?.standNumber}</span>
+          </div>
+
+          <div class="big-amt">
+             $${payment.amount.toLocaleString()}
+          </div>
+
+          <div class="row">
+             <span class="label">Payment Type:</span>
+             <span>${payment.type}</span>
+          </div>
+          <div class="row">
+             <span class="label">New Balance Outstanding:</span>
+             <span style="color: ${outstanding > 0 ? 'red' : 'green'}">$${outstanding.toLocaleString()}</span>
+          </div>
+
+          <div class="footer">
+             Recorded by Installment Tracker.<br/>
+             This receipt corresponds to physical receipt #${payment.manualReceiptNo}.
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const submitPayment = (e: React.FormEvent) => {
       e.preventDefault();
-      if(!selectedSaleForPayment || !payAmount) return;
+      if(!selectedSaleForPayment || !payAmount || !manualReceiptNo) {
+          alert("Audit Requirement: Manual Receipt Number is missing.");
+          return;
+      }
 
       const payment: Payment = {
           id: `pay-${Date.now()}`,
           saleId: selectedSaleForPayment,
           amount: parseFloat(payAmount),
-          date: new Date().toISOString().split('T')[0],
-          reference: `INST-${Date.now().toString().slice(-4)}`,
+          date: new Date(payDate + 'T12:00:00').toISOString(),
+          reference: payRef || `INST-${Date.now().toString().slice(-4)}`,
+          manualReceiptNo: manualReceiptNo,
           type: 'INSTALLMENT'
       };
 
       addPayment(payment);
+      
+      // Auto Print
+      setTimeout(() => handlePrintReceipt(payment), 500);
+
       setShowPayModal(false);
       setPayAmount('');
-      alert("Installment recorded successfully!");
+      setManualReceiptNo('');
+      setPayRef('');
   };
 
   return (
@@ -225,24 +322,64 @@ export const Installments: React.FC = () => {
        {showPayModal && (
            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                <div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl">
-                   <div className="flex justify-between items-center mb-4">
-                       <h3 className="text-lg font-bold text-slate-900">Record Installment</h3>
+                   <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+                       <h3 className="text-lg font-bold text-slate-900 flex items-center">
+                           <Receipt size={20} className="mr-2 text-amber-500"/> Record Installment
+                       </h3>
                        <button onClick={() => setShowPayModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                    </div>
                    <form onSubmit={submitPayment} className="space-y-4">
+                       
+                       <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                           <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wide flex items-center mb-1">
+                               <AlertTriangle size={10} className="mr-1"/> Receipt Book Reference
+                           </label>
+                           <input 
+                                type="text" 
+                                required
+                                className="w-full bg-white border border-amber-200 rounded p-2 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none"
+                                placeholder="e.g. BK-10523"
+                                value={manualReceiptNo}
+                                onChange={(e) => setManualReceiptNo(e.target.value)}
+                           />
+                       </div>
+
                        <div>
-                           <label className="premium-label">Amount ($)</label>
+                           <label className="premium-label">Payment Date</label>
+                           <input 
+                                type="date" 
+                                required
+                                className="premium-input"
+                                value={payDate}
+                                onChange={(e) => setPayDate(e.target.value)}
+                           />
+                       </div>
+
+                       <div>
+                           <label className="premium-label">Amount Paid ($)</label>
                            <input 
                                 type="number" 
                                 autoFocus
-                                className="premium-input text-lg font-bold"
+                                className="premium-input text-2xl font-bold"
                                 placeholder="0.00"
                                 value={payAmount}
                                 onChange={(e) => setPayAmount(e.target.value)}
                            />
                        </div>
-                       <button className="w-full btn-gradient-dark text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wide">
-                           Confirm Payment
+
+                       <div>
+                           <label className="premium-label">Bank Ref (Optional)</label>
+                           <input 
+                                type="text" 
+                                className="premium-input"
+                                placeholder="EFT Reference..."
+                                value={payRef}
+                                onChange={(e) => setPayRef(e.target.value)}
+                           />
+                       </div>
+
+                       <button className="w-full btn-gradient-dark text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wide flex items-center justify-center shadow-lg mt-2">
+                           <Printer size={16} className="mr-2"/> Confirm & Print
                        </button>
                    </form>
                </div>
