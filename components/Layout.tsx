@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, Users, Building2, BadgeDollarSign, FileText, PieChart, Menu, Settings, Wallet, Contact, BarChart2, Bell, X, Check, Info, AlertTriangle, CheckCircle, Grid3X3 } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, BadgeDollarSign, FileText, PieChart, Menu, Settings, Wallet, Contact, BarChart2, Bell, X, Check, Info, AlertTriangle, CheckCircle, Grid3X3, Database } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 
@@ -21,6 +21,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const notifRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const isAdmin = currentUser.role === UserRole.ADMIN;
 
   // Mock Switch User for Demo
   const handleSwitchUser = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -67,21 +69,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto custom-scrollbar">
-            <NavItem to="/" icon={LayoutDashboard} label="Dashboard" active={currentPath === '/'} onClick={navigate} />
-            <div className="pt-4 pb-1 pl-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Modules</div>
+            {isAdmin && (
+                <NavItem to="/" icon={LayoutDashboard} label="Dashboard" active={currentPath === '/'} onClick={navigate} />
+            )}
+            
+            <div className="pt-4 pb-1 pl-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Inventory & Sales</div>
             <NavItem to="/developers" icon={Building2} label="Developments" active={currentPath === '/developers'} onClick={navigate} />
             <NavItem to="/stands" icon={Grid3X3} label="Stands Inventory" active={currentPath === '/stands'} onClick={navigate} />
             <NavItem to="/clients" icon={Contact} label="Client CRM" active={currentPath === '/clients'} onClick={navigate} />
             <NavItem to="/sales" icon={BadgeDollarSign} label="Sales Desk" active={currentPath === '/sales'} onClick={navigate} />
             <NavItem to="/agreements" icon={FileText} label="Agreements" active={currentPath === '/agreements'} onClick={navigate} />
-            <div className="pt-4 pb-1 pl-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Financials</div>
-            <NavItem to="/commissions" icon={Wallet} label="Commissions" active={currentPath === '/commissions'} onClick={navigate} />
-            <NavItem to="/finance" icon={PieChart} label="Reconciliation" active={currentPath === '/finance'} onClick={navigate} />
-            <NavItem to="/reports" icon={BarChart2} label="Reports" active={currentPath === '/reports'} onClick={navigate} />
-            <div className="pt-4 pb-1 pl-4 text-xs font-bold text-slate-400 uppercase tracking-widest">System</div>
-            <NavItem to="/agents" icon={Users} label="Agents" active={currentPath === '/agents'} onClick={navigate} />
-            {currentUser.role === UserRole.ADMIN && (
-              <NavItem to="/admin" icon={Settings} label="Admin Settings" active={currentPath === '/admin'} onClick={navigate} />
+            
+            {isAdmin && (
+                <>
+                    <div className="pt-4 pb-1 pl-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Financials</div>
+                    <NavItem to="/commissions" icon={Wallet} label="Commissions" active={currentPath === '/commissions'} onClick={navigate} />
+                    <NavItem to="/finance" icon={PieChart} label="Reconciliation" active={currentPath === '/finance'} onClick={navigate} />
+                    <NavItem to="/reports" icon={BarChart2} label="Reports" active={currentPath === '/reports'} onClick={navigate} />
+                    
+                    <div className="pt-4 pb-1 pl-4 text-xs font-bold text-slate-400 uppercase tracking-widest">System</div>
+                    <NavItem to="/agents" icon={Users} label="Agents" active={currentPath === '/agents'} onClick={navigate} />
+                    <NavItem to="/admin" icon={Settings} label="Admin & Settings" active={currentPath === '/admin'} onClick={navigate} />
+                </>
             )}
           </nav>
 

@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Search, Mail, Phone, MapPin, User as UserIcon, X, Calendar, DollarSign } from 'lucide-react';
-import { Client, Sale } from '../types';
+import { Plus, Search, Mail, Phone, MapPin, User as UserIcon, X, Calendar, DollarSign, Trash2 } from 'lucide-react';
+import { Client, UserRole } from '../types';
 
 export const Clients: React.FC = () => {
-  const { clients, addClient, sales, stands, developers } = useApp();
+  const { clients, addClient, deleteClient, sales, stands, developers, currentUser } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [historyModalClient, setHistoryModalClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +16,8 @@ export const Clients: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [address, setAddress] = useState('');
+
+  const isAdmin = currentUser.role === UserRole.ADMIN;
 
   const filteredClients = clients.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -37,6 +40,13 @@ export const Clients: React.FC = () => {
     setIsModalOpen(false);
     // Reset
     setName(''); setEmail(''); setPhone(''); setIdNumber(''); setAddress('');
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      if(window.confirm("Are you sure you want to delete this client? This cannot be undone.")) {
+          deleteClient(id);
+      }
   };
 
   const getClientSales = (clientId: string) => {
@@ -68,7 +78,17 @@ export const Clients: React.FC = () => {
           {filteredClients.map(client => {
               const clientSalesCount = getClientSales(client.id).length;
               return (
-              <div key={client.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:border-amber-200 transition-colors group">
+              <div key={client.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:border-amber-200 transition-colors group relative">
+                  {isAdmin && clientSalesCount === 0 && (
+                      <button 
+                        onClick={(e) => handleDelete(e, client.id)}
+                        className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete Client"
+                      >
+                          <Trash2 size={16} />
+                      </button>
+                  )}
+                  
                   <div className="flex items-center space-x-4 mb-4">
                       <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-600 transition-colors">
                           <UserIcon size={24} />
@@ -177,7 +197,7 @@ export const Clients: React.FC = () => {
                                     <div key={sale.id} className="border border-slate-100 rounded-lg p-4 hover:bg-slate-50 transition-colors">
                                         <div className="flex justify-between mb-2">
                                             <span className="font-bold text-slate-900">{dev?.name} - Stand {stand?.standNumber}</span>
-                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${sale.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{sale.status}</span>
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${sale.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : sale.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{sale.status}</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                                             <div className="text-slate-500 flex items-center">
@@ -200,7 +220,7 @@ export const Clients: React.FC = () => {
                 <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-sm">
                     <span className="text-slate-500">Client since {historyModalClient.dateAdded}</span>
                     <span className="font-bold text-slate-900">
-                        Total Spend: ${getClientSales(historyModalClient.id).reduce((acc, s) => acc + s.salePrice, 0).toLocaleString()}
+                        Total Spend: ${getClientSales(historyModalClient.id).filter(s => s.status !== 'CANCELLED').reduce((acc, s) => acc + s.salePrice, 0).toLocaleString()}
                     </span>
                 </div>
             </div>

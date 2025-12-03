@@ -1,6 +1,6 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User, Developer, Stand, Sale, Payment, SalesAgreement, Commission, AuditLog, UserRole, StandStatus, AgreementStatus, Client, AgreementTemplate, AppNotification } from '../types';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { User, Developer, Stand, Sale, Payment, SalesAgreement, Commission, AuditLog, UserRole, StandStatus, AgreementStatus, Client, AgreementTemplate, AppNotification, Backup } from '../types';
 
 interface AppState {
   currentUser: User;
@@ -15,17 +15,23 @@ interface AppState {
   commissions: Commission[];
   auditLogs: AuditLog[];
   notifications: AppNotification[];
+  backups: Backup[];
+  isAutoBackupEnabled: boolean;
 }
 
 interface AppContextType extends AppState {
   setCurrentUser: (user: User) => void;
   addUser: (user: User) => void;
+  deleteUser: (id: string) => void;
   addClient: (client: Client) => void;
+  deleteClient: (id: string) => void;
   addDeveloper: (dev: Developer) => void;
   updateDeveloper: (dev: Developer) => void;
   deleteDeveloper: (id: string) => void;
   addStand: (stand: Stand) => void;
+  deleteStand: (id: string) => void;
   addSale: (sale: Sale) => void;
+  cancelSale: (id: string) => void;
   addPayment: (payment: Payment) => void;
   createAgreement: (agreement: SalesAgreement) => void;
   addTemplate: (template: AgreementTemplate) => void;
@@ -37,120 +43,26 @@ interface AppContextType extends AppState {
   clearNotifications: () => void;
   currentPath: string;
   navigate: (path: string) => void;
+  createBackup: () => void;
+  toggleAutoBackup: (enabled: boolean) => void;
+  downloadBackup: (backupId?: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Mock Data
+// Initial Data - Clean Slate
 const INITIAL_USERS: User[] = [
-  { id: 'u1', name: 'Admin User', role: UserRole.ADMIN, email: 'admin@fineestate.com' },
-  { id: 'u2', name: 'John Doe', role: UserRole.AGENT, email: 'john@fineestate.com' },
-  { id: 'u3', name: 'Jane Smith', role: UserRole.AGENT, email: 'jane@fineestate.com' },
+  { id: 'u1', name: 'System Admin', role: UserRole.ADMIN, email: 'admin@fineestate.com' }
 ];
 
-const INITIAL_CLIENTS: Client[] = [
-  { id: 'c1', name: 'Alice Green', email: 'alice@example.com', phone: '555-0101', idNumber: 'ID987654321', address: '123 Maple St', dateAdded: '2023-10-01' },
-  { id: 'c2', name: 'Robert Fox', email: 'bob@example.com', phone: '555-0102', idNumber: 'ID123456789', address: '456 Oak Ave', dateAdded: '2023-10-05' },
-];
-
-const INITIAL_DEVS: Developer[] = [
-  { 
-    id: 'd1', name: 'Sunset Properties', contactPerson: 'Mike Ross', email: 'mike@sunset.com', totalStands: 50,
-    depositTerms: '10%', financingTerms: '24 Months', mandateHolderId: 'u2'
-  },
-  { 
-    id: 'd2', name: 'Urban Living', contactPerson: 'Rachel Zane', email: 'rachel@urban.com', totalStands: 30,
-    depositTerms: '$5000 Flat', financingTerms: '12 Months', mandateHolderId: 'u3'
-  },
-];
-
-const INITIAL_STANDS: Stand[] = [
-  { 
-    id: 'd1-101', standNumber: '101', developerId: 'd1', price: 150000, size: 500, status: StandStatus.AVAILABLE,
-    depositRequired: 15000, financingTerms: '24 Months'
-  },
-  { 
-    id: 'd1-102', standNumber: '102', developerId: 'd1', price: 160000, size: 550, status: StandStatus.SOLD,
-    depositRequired: 16000, financingTerms: '24 Months'
-  },
-  { 
-    id: 'd1-103', standNumber: '103', developerId: 'd1', price: 155000, size: 510, status: StandStatus.AVAILABLE,
-    depositRequired: 15500, financingTerms: '24 Months'
-  },
-  { 
-    id: 'd2-201', standNumber: '201', developerId: 'd2', price: 200000, size: 400, status: StandStatus.AVAILABLE,
-    depositRequired: 5000, financingTerms: '12 Months'
-  },
-];
-
-const INITIAL_SALES: Sale[] = [
-  { 
-    id: 's1', standId: 'd1-102', developerId: 'd1', agentId: 'u2', 
-    clientId: 'c1', clientName: 'Alice Green', saleDate: '2023-10-15', 
-    salePrice: 160000, depositPaid: 16000, status: 'COMPLETED' 
-  }
-];
-
-const INITIAL_COMMISSIONS: Commission[] = [
-  {
-    id: 'c1',
-    saleId: 's1',
-    agentId: 'u2',
-    standId: 'd1-102',
-    salePrice: 160000,
-    totalAgencyCommission: 160000 * 0.05,
-    agentCommission: 160000 * 0.025,
-    status: 'PENDING',
-    dateCreated: '2023-10-15'
-  }
-];
-
-const INITIAL_PAYMENTS: Payment[] = [
-  { id: 'p1', saleId: 's1', amount: 16000, date: '2023-10-15', reference: 'REF001', type: 'DEPOSIT' }
-];
-
-const INITIAL_TEMPLATES: AgreementTemplate[] = [
-  {
-    id: 't1',
-    name: 'Standard Residential Agreement',
-    content: `AGREEMENT OF SALE
-
-ENTERED INTO BY AND BETWEEN:
-{{DEVELOPER_NAME}} (The "Seller")
-AND
-{{CLIENT_NAME}} (The "Purchaser")
-ID/Registration: {{CLIENT_ID}}
-
-1. PROPERTY
-Stand No: {{STAND_NUMBER}}
-Development: {{DEVELOPER_NAME}}
-Size: {{SIZE}} sqm
-
-2. PURCHASE PRICE
-The purchase price is $\{{PRICE}}.
-
-3. DEPOSIT
-A deposit of $\{{DEPOSIT}} has been paid.
-
-4. TERMS
-{{TERMS}}
-
-5. GENERAL
-This agreement constitutes the entire agreement between the parties.`,
-    lastModified: '2023-10-01'
-  }
-];
-
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'n1',
-    title: 'Welcome to FineEstate',
-    message: 'System initialization complete. Dashboard is ready.',
-    type: 'INFO',
-    timestamp: new Date().toISOString(),
-    read: false
-  }
-];
+const INITIAL_CLIENTS: Client[] = [];
+const INITIAL_DEVS: Developer[] = [];
+const INITIAL_STANDS: Stand[] = [];
+const INITIAL_SALES: Sale[] = [];
+const INITIAL_COMMISSIONS: Commission[] = [];
+const INITIAL_PAYMENTS: Payment[] = [];
+const INITIAL_TEMPLATES: AgreementTemplate[] = [];
+const INITIAL_NOTIFICATIONS: AppNotification[] = [];
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_USERS[0]);
@@ -166,6 +78,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
   const [currentPath, setCurrentPath] = useState('/');
+  
+  // Backup State
+  const [backups, setBackups] = useState<Backup[]>([]);
+  const [isAutoBackupEnabled, setIsAutoBackupEnabled] = useState(false);
+
+  // Auto Backup Effect (Hourly)
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isAutoBackupEnabled) {
+      createBackup();
+      interval = setInterval(() => {
+        createBackup();
+      }, 3600000); 
+    }
+    return () => clearInterval(interval);
+  }, [isAutoBackupEnabled]);
+
+  const createBackup = () => {
+    const recordCount = users.length + clients.length + developers.length + stands.length + sales.length;
+    const size = JSON.stringify({ users, clients, developers, stands, sales, payments, agreements }).length;
+    
+    const newBackup: Backup = {
+      id: `bk-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      size: `${(size / 1024).toFixed(2)} KB`,
+      recordCount
+    };
+    
+    setBackups(prev => [newBackup, ...prev].slice(0, 10)); // Keep last 10
+    if(currentUser.role === UserRole.ADMIN) {
+       triggerNotification('System Backup Created', `Automated backup ${newBackup.id} completed successfully.`, 'INFO', '/admin');
+    }
+  };
+
+  const toggleAutoBackup = (enabled: boolean) => {
+    setIsAutoBackupEnabled(enabled);
+    addLog('SYSTEM_SETTINGS', `Auto-backup ${enabled ? 'enabled' : 'disabled'}`);
+  };
+
+  const downloadBackup = (backupId?: string) => {
+    const dataToDownload = {
+      metadata: {
+        timestamp: new Date().toISOString(),
+        version: "1.0",
+        generatedBy: currentUser.name
+      },
+      data: {
+        users, clients, developers, stands, sales, payments, agreements, commissions, templates
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(dataToDownload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FineEstate_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    addLog('DATA_EXPORT', 'Manual backup downloaded');
+  };
 
   const addLog = (action: string, details: string) => {
     const newLog: AuditLog = {
@@ -204,10 +179,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addLog('ADD_USER', `Added user ${user.name}`);
   }
 
+  const deleteUser = (id: string) => {
+      const user = users.find(u => u.id === id);
+      if(user) {
+          setUsers(prev => prev.filter(u => u.id !== id));
+          addLog('DELETE_USER', `Deleted user ${user.name}`);
+      }
+  }
+
   const addClient = (client: Client) => {
     setClients([...clients, client]);
     addLog('ADD_CLIENT', `Added client ${client.name}`);
   }
+
+  const deleteClient = (id: string) => {
+    if(sales.some(s => s.clientId === id)) {
+        alert("Cannot delete client with active transaction history.");
+        return;
+    }
+    const client = clients.find(c => c.id === id);
+    setClients(prev => prev.filter(c => c.id !== id));
+    addLog('DELETE_CLIENT', `Deleted client ${client?.name || id}`);
+  };
 
   const addDeveloper = (dev: Developer) => {
     setDevelopers([...developers, dev]);
@@ -221,9 +214,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const deleteDeveloper = (id: string) => {
     const dev = developers.find(d => d.id === id);
+    if(stands.some(s => s.developerId === id)) {
+        alert("Cannot delete developer with registered stands. Clear inventory first.");
+        return;
+    }
     if(dev) {
         setDevelopers(prev => prev.filter(d => d.id !== id));
-        // Note: Real app would need to handle cascading deletes or warnings
         addLog('DELETE_DEVELOPER', `Deleted developer ${dev.name}`);
     }
   };
@@ -233,13 +229,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addLog('ADD_STAND', `Added stand ${stand.standNumber} for developer ${stand.developerId}`);
   };
 
+  const deleteStand = (id: string) => {
+     if(sales.some(s => s.standId === id && s.status !== 'CANCELLED')) {
+        alert("Cannot delete stand that has been sold.");
+        return;
+     }
+     const stand = stands.find(s => s.id === id);
+     setStands(prev => prev.filter(s => s.id !== id));
+     addLog('DELETE_STAND', `Deleted stand #${stand?.standNumber}`);
+  };
+
   const addSale = (sale: Sale) => {
     setSales([...sales, sale]);
     setStands(stands.map(s => s.id === sale.standId ? { ...s, status: StandStatus.SOLD } : s));
     
     const stand = stands.find(s => s.id === sale.standId);
     
-    // Create Commission Record
+    // Create Commission
     const totalComm = sale.salePrice * 0.05;
     const agentComm = sale.salePrice * 0.025;
     
@@ -256,26 +262,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setCommissions(prev => [...prev, newCommission]);
 
-    addLog('ADD_SALE', `Sold stand ${sale.standId} to ${sale.clientName}. Commission generated.`);
+    addLog('ADD_SALE', `Sold stand ${sale.standId} to ${sale.clientName}.`);
 
-    // TRIGGER ALERTS
-    // 1. Stand Availability Alert
-    triggerNotification(
-      'Stand Sold Alert',
-      `Stand #${stand?.standNumber} has been officially SOLD to ${sale.clientName}. Inventory updated.`,
-      'ALERT',
-      '/developers'
-    );
-
-    // 2. Payment Pending Alert
+    // Alerts
+    triggerNotification('Stand Sold Alert', `Stand #${stand?.standNumber} sold to ${sale.clientName}.`, 'ALERT', '/developers');
     if (sale.depositPaid > 0) {
-      triggerNotification(
-        'Payment Pending Verification',
-        `A deposit of $${sale.depositPaid.toLocaleString()} was recorded for Stand #${stand?.standNumber}. Please verify receipt in Finance.`,
-        'WARNING',
-        '/finance'
-      );
+      triggerNotification('Payment Verification', `Deposit of $${sale.depositPaid.toLocaleString()} logged.`, 'WARNING', '/finance');
     }
+  };
+
+  const cancelSale = (id: string) => {
+      const sale = sales.find(s => s.id === id);
+      if(!sale) return;
+      
+      setSales(prev => prev.map(s => s.id === id ? {...s, status: 'CANCELLED'} : s));
+      setStands(prev => prev.map(s => s.id === sale.standId ? {...s, status: StandStatus.AVAILABLE} : s));
+      
+      // Void commission
+      setCommissions(prev => prev.filter(c => c.saleId !== id));
+
+      addLog('CANCEL_SALE', `Cancelled sale ${id} - Stand released`);
+      triggerNotification('Sale Cancelled', `Sale for Stand ${sale.standId} cancelled. Stand is now AVAILABLE.`, 'WARNING');
   };
 
   const addPayment = (payment: Payment) => {
@@ -284,13 +291,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
        setSales(prev => prev.map(s => s.id === payment.saleId ? {...s, depositPaid: s.depositPaid + payment.amount} : s));
     }
     addLog('ADD_PAYMENT', `Payment of ${payment.amount} for sale ${payment.saleId}`);
-    
-    // Notify payment received
-    triggerNotification(
-      'Payment Received',
-      `Payment of $${payment.amount.toLocaleString()} logged for Sale ${payment.reference}.`,
-      'SUCCESS'
-    );
+    triggerNotification('Payment Received', `Payment of $${payment.amount.toLocaleString()} logged.`, 'SUCCESS');
   };
 
   const createAgreement = (agreement: SalesAgreement) => {
@@ -307,8 +308,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setAgreements(agreements.map(a => a.id === id ? { ...a, status, approvedBy: status === AgreementStatus.APPROVED ? currentUser.id : undefined } : a));
     addLog('UPDATE_AGREEMENT', `Agreement ${id} status changed to ${status}`);
     
-    const agr = agreements.find(a => a.id === id);
-    if(agr && status === AgreementStatus.APPROVED) {
+    if(status === AgreementStatus.APPROVED) {
         triggerNotification('Agreement Approved', `Sales Agreement ${id} has been approved.`, 'SUCCESS');
     }
   };
@@ -319,7 +319,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const getAgentPerformance = (agentId: string) => {
-    const agentSales = sales.filter(s => s.agentId === agentId);
+    const agentSales = sales.filter(s => s.agentId === agentId && s.status !== 'CANCELLED');
     const agentComms = commissions.filter(c => c.agentId === agentId);
     
     return {
@@ -335,9 +335,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      currentUser, setCurrentUser, users, addUser, clients, addClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications,
-      addDeveloper, addStand, addSale, addPayment, createAgreement, addTemplate, updateAgreementStatus, markCommissionPaid, addLog, getAgentPerformance, markNotificationRead, clearNotifications,
-      currentPath, navigate
+      currentUser, setCurrentUser, users, addUser, deleteUser, clients, addClient, deleteClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications, backups, isAutoBackupEnabled,
+      addDeveloper, addStand, deleteStand, addSale, cancelSale, addPayment, createAgreement, addTemplate, updateAgreementStatus, markCommissionPaid, addLog, getAgentPerformance, markNotificationRead, clearNotifications,
+      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup
     }}>
       {children}
     </AppContext.Provider>

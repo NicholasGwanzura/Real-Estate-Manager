@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   ADMIN = 'ADMIN',
   AGENT = 'AGENT',
@@ -131,4 +132,11 @@ export interface AppNotification {
   timestamp: string;
   read: boolean;
   actionUrl?: string;
+}
+
+export interface Backup {
+  id: string;
+  timestamp: string;
+  size: string;
+  recordCount: number;
 }

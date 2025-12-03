@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { StandStatus, Sale, UserRole } from '../types';
-import { CheckCircle, AlertOctagon, Search, Wand2, UserPlus, Users, BadgeDollarSign } from 'lucide-react';
+import { CheckCircle, AlertOctagon, Search, Wand2, UserPlus, Users, BadgeDollarSign, XCircle, Ban } from 'lucide-react';
 
 export const Sales: React.FC = () => {
-  const { developers, stands, sales, addSale, currentUser, clients, navigate, users } = useApp();
+  const { developers, stands, sales, addSale, cancelSale, currentUser, clients, navigate, users } = useApp();
   
   const [selectedDev, setSelectedDev] = useState(developers[0]?.id || '');
   
@@ -18,6 +19,7 @@ export const Sales: React.FC = () => {
   const targetStand = stands.find(s => s.id === targetStandId);
   const isAvailable = targetStand?.status === StandStatus.AVAILABLE;
   const agents = users.filter(u => u.role === UserRole.AGENT);
+  const isAdmin = currentUser.role === UserRole.ADMIN;
 
   // Auto Allocate Logic
   const handleAutoAllocate = () => {
@@ -65,6 +67,12 @@ export const Sales: React.FC = () => {
     setDepositAmount('');
     setTargetStandId('');
     alert(`Sale recorded for ${client.name}! Agreement draft pending.`);
+  };
+
+  const handleCancelSale = (id: string) => {
+      if(window.confirm("Are you sure you want to CANCEL this sale? This will revert the stand status to AVAILABLE.")) {
+          cancelSale(id);
+      }
   };
 
   const filteredSales = sales.filter(s => s.developerId === selectedDev);
@@ -187,28 +195,44 @@ export const Sales: React.FC = () => {
                    <th className="px-4 py-4 uppercase font-semibold text-xs tracking-wider">Stand</th>
                    <th className="px-4 py-4 uppercase font-semibold text-xs tracking-wider">Client</th>
                    <th className="px-4 py-4 uppercase font-semibold text-xs tracking-wider text-right">Price</th>
-                   <th className="px-4 py-4 uppercase font-semibold text-xs tracking-wider text-right">Deposit</th>
                    <th className="px-4 py-4 uppercase font-semibold text-xs tracking-wider">Status</th>
+                   {isAdmin && <th className="px-4 py-4 uppercase font-semibold text-xs tracking-wider">Action</th>}
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
                  {filteredSales.length === 0 ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">No recent sales recorded for this development.</td></tr>
+                    <tr><td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-slate-400 italic">No recent sales recorded for this development.</td></tr>
                  ) : (
                     filteredSales.map(sale => {
                         const stand = stands.find(s => s.id === sale.standId);
+                        const isCancelled = sale.status === 'CANCELLED';
                         return (
-                         <tr key={sale.id} className="hover:bg-slate-50 transition-colors">
+                         <tr key={sale.id} className={`hover:bg-slate-50 transition-colors ${isCancelled ? 'opacity-50' : ''}`}>
                            <td className="px-4 py-4 text-slate-500">{sale.saleDate}</td>
                            <td className="px-4 py-4 font-bold text-slate-900">#{stand?.standNumber}</td>
                            <td className="px-4 py-4 text-slate-600">{sale.clientName}</td>
                            <td className="px-4 py-4 text-right font-mono text-slate-700">${sale.salePrice.toLocaleString()}</td>
-                           <td className="px-4 py-4 text-right font-mono text-green-600 font-medium">${sale.depositPaid.toLocaleString()}</td>
                            <td className="px-4 py-4">
-                             <span className="flex items-center text-[10px] uppercase font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full w-fit">
-                                <CheckCircle size={10} className="mr-1"/> {sale.status}
+                             <span className={`flex items-center text-[10px] uppercase font-bold px-2 py-1 rounded-full w-fit ${
+                                 isCancelled ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                             }`}>
+                                {isCancelled ? <Ban size={10} className="mr-1"/> : <CheckCircle size={10} className="mr-1"/>} 
+                                {sale.status}
                              </span>
                            </td>
+                           {isAdmin && (
+                               <td className="px-4 py-4">
+                                   {!isCancelled && (
+                                       <button 
+                                        onClick={() => handleCancelSale(sale.id)}
+                                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                        title="Cancel Sale"
+                                       >
+                                           <XCircle size={16}/>
+                                       </button>
+                                   )}
+                               </td>
+                           )}
                          </tr>
                         );
                     })

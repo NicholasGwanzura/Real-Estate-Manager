@@ -50,8 +50,9 @@ export const Dashboard: React.FC = () => {
   }));
   
   if (chartData.length === 0) {
-      // Add a dummy point if no data so chart renders
-      chartData.push({ name: '2023-10', revenue: 0, salesCount: 0 });
+      // Add a dummy point if no data so chart renders with current month
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      chartData.push({ name: currentMonth, revenue: 0, salesCount: 0 });
   }
 
   // 2. Sales by Developer
@@ -101,7 +102,7 @@ export const Dashboard: React.FC = () => {
         <StatCard 
             title="Total Revenue" 
             value={`$${(totalRevenue / 1000000).toFixed(2)}M`} 
-            subValue="+12.5% vs last month"
+            subValue="+0% vs last month"
             icon={DollarSign} 
             gradient="bg-slate-900" 
         />
@@ -215,22 +216,29 @@ export const Dashboard: React.FC = () => {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
              <h3 className="text-lg font-bold text-slate-900 mb-6">Revenue by Development</h3>
              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={salesByDev} layout="vertical" barSize={12}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="transparent" />
-                        <XAxis type="number" hide />
-                        <YAxis 
-                          dataKey="name" 
-                          type="category" 
-                          width={100} 
-                          tick={{fill: '#475569', fontSize: 13, fontWeight: 500}} 
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip cursor={{fill: '#f8fafc'}} content={<CustomTooltip />} />
-                        <Bar dataKey="revenue" fill="#1e293b" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+                {salesByDev.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={salesByDev} layout="vertical" barSize={12}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="transparent" />
+                          <XAxis type="number" hide />
+                          <YAxis 
+                            dataKey="name" 
+                            type="category" 
+                            width={100} 
+                            tick={{fill: '#475569', fontSize: 13, fontWeight: 500}} 
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip cursor={{fill: '#f8fafc'}} content={<CustomTooltip />} />
+                          <Bar dataKey="revenue" fill="#1e293b" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 italic text-sm">
+                     <Building size={32} className="mb-2 opacity-20"/>
+                     No developments with sales data yet.
+                  </div>
+                )}
              </div>
           </div>
            {/* Widget */}
@@ -239,11 +247,11 @@ export const Dashboard: React.FC = () => {
                 <div className="absolute bottom-0 left-0 p-32 bg-blue-600 rounded-full blur-3xl opacity-10 transform -translate-x-1/2 translate-y-1/2"></div>
                 
                 <h3 className="text-2xl font-bold mb-2 relative z-10">Sales Goals 2024</h3>
-                <p className="text-slate-400 mb-6 max-w-xs relative z-10 text-sm">You are on track to exceed your Q4 targets by 15%.</p>
+                <p className="text-slate-400 mb-6 max-w-xs relative z-10 text-sm">System ready for new data input.</p>
                 <div className="w-full max-w-xs bg-white/10 rounded-full h-2 mb-2 relative z-10">
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]" style={{width: '75%'}}></div>
+                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]" style={{width: '0%'}}></div>
                 </div>
-                <p className="text-xs text-slate-400 font-mono relative z-10 tracking-widest mt-2">75% COMPLETE</p>
+                <p className="text-xs text-slate-400 font-mono relative z-10 tracking-widest mt-2">0% COMPLETE</p>
            </div>
       </div>
     </div>
