@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, Users, Building2, BadgeDollarSign, FileText, PieChart, Menu, Settings, Wallet, Contact, BarChart2, Bell, AlertTriangle, CheckCircle, Info, Grid3X3, LogOut, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, BadgeDollarSign, FileText, PieChart, Menu, Settings, Wallet, Contact, BarChart2, Bell, AlertTriangle, CheckCircle, Info, Grid3X3, LogOut, CalendarClock, Receipt, Cloud, CloudOff } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 
@@ -19,7 +19,7 @@ const NavItem = ({ to, icon: Icon, label, active, onClick }: { to: string; icon:
 );
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, setCurrentUser, users, currentPath, navigate, notifications, markNotificationRead, clearNotifications, logout } = useApp();
+  const { currentUser, setCurrentUser, users, currentPath, navigate, notifications, markNotificationRead, clearNotifications, logout, lastSaved } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -106,6 +106,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <div className="mt-6 mb-2 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                         <span className="w-full border-b border-slate-100 pb-1">Financials</span>
                     </div>
+                    <NavItem to="/cashier" icon={Receipt} label="Transactions" active={currentPath === '/cashier'} onClick={handleNavClick} />
                     <NavItem to="/installments" icon={CalendarClock} label="Installment Tracker" active={currentPath === '/installments'} onClick={handleNavClick} />
                     <NavItem to="/commissions" icon={Wallet} label="Commissions" active={currentPath === '/commissions'} onClick={handleNavClick} />
                     <NavItem to="/finance" icon={PieChart} label="Reconciliation" active={currentPath === '/finance'} onClick={handleNavClick} />
@@ -168,6 +169,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
             
             <div className="flex items-center space-x-4">
+                {/* Auto Save Indicator */}
+                <div className="hidden md:flex items-center text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-full font-bold border border-green-100">
+                    <Cloud size={14} className="mr-1.5" />
+                    <span>Saved {lastSaved.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                </div>
+
                 {/* Notifications */}
                 <div className="relative" ref={notifRef}>
                     <button 

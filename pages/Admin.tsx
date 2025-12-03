@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Shield, UserPlus, FileText, Search, Activity, Database, Download, Clock, CheckCircle, Trash2, User as UserIcon } from 'lucide-react';
+import { Shield, UserPlus, FileText, Search, Activity, Database, Download, Clock, CheckCircle, Trash2, User as UserIcon, UploadCloud, AlertTriangle } from 'lucide-react';
 import { User, UserRole } from '../types';
 
 export const Admin: React.FC = () => {
-  const { auditLogs, users, addUser, deleteUser, backups, isAutoBackupEnabled, toggleAutoBackup, createBackup, downloadBackup } = useApp();
+  const { auditLogs, users, addUser, deleteUser, backups, isAutoBackupEnabled, toggleAutoBackup, createBackup, downloadBackup, importDatabase } = useApp();
   const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'backup'>('users');
   
   // New User State
@@ -32,6 +32,23 @@ export const Admin: React.FC = () => {
       if(window.confirm(`Are you sure you want to remove ${name}? This will revoke their system access immediately.`)) {
           deleteUser(id);
       }
+  };
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if(window.confirm("WARNING: Restoring a backup will OVERWRITE all current data. Are you sure?")) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (event.target?.result) {
+                    const success = importDatabase(event.target.result as string);
+                    if(success) alert("System restored successfully!");
+                    else alert("Failed to restore. Invalid file format.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    }
   };
 
   return (
@@ -155,46 +172,78 @@ export const Admin: React.FC = () => {
       {/* BACKUP TAB */}
       {activeTab === 'backup' && (
         <div className="space-y-6">
+            {/* Controls */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-900 flex items-center">
-                            <Clock size={20} className="mr-2 text-amber-500"/> Automated Backup System
-                        </h2>
-                        <p className="text-sm text-slate-500 mt-1">Configure the system to automatically snapshot your data every hour.</p>
-                    </div>
-                    <div className="flex items-center space-x-4 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <span className={`text-xs font-bold px-3 py-1 rounded-lg ${isAutoBackupEnabled ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
-                            {isAutoBackupEnabled ? 'ACTIVE' : 'DISABLED'}
-                        </span>
-                        <button 
-                            onClick={() => toggleAutoBackup(!isAutoBackupEnabled)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAutoBackupEnabled ? 'bg-slate-900' : 'bg-slate-300'}`}
-                        >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAutoBackupEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
-                    </div>
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    {/* Auto Backup Config */}
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                                <Clock size={20} className="mr-2 text-amber-500"/> Automated Backup System
+                            </h2>
+                            <p className="text-sm text-slate-500 mt-1">Configure the system to automatically snapshot your data every hour.</p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 bg-slate-50 p-2 rounded-xl border border-slate-100 w-fit">
+                            <span className={`text-xs font-bold px-3 py-1 rounded-lg ${isAutoBackupEnabled ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
+                                {isAutoBackupEnabled ? 'ACTIVE' : 'DISABLED'}
+                            </span>
+                            <button 
+                                onClick={() => toggleAutoBackup(!isAutoBackupEnabled)}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAutoBackupEnabled ? 'bg-slate-900' : 'bg-slate-300'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAutoBackupEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                    <div className="text-sm text-slate-600 flex items-center">
-                        <Clock size={16} className="mr-2 text-slate-400"/>
-                        <span className="font-bold mr-2">Next Scheduled Backup:</span> {isAutoBackupEnabled ? 'In ~1 Hour' : 'Not Scheduled'}
+                        <div className="text-sm text-slate-600 flex items-center bg-slate-50 p-3 rounded-lg border border-slate-200/50">
+                            <Clock size={16} className="mr-2 text-slate-400"/>
+                            <span className="font-bold mr-2">Next Scheduled Backup:</span> {isAutoBackupEnabled ? 'In ~1 Hour' : 'Not Scheduled'}
+                        </div>
                     </div>
-                    <button 
-                        onClick={() => createBackup()}
-                        className="w-full sm:w-auto bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                        Trigger Manual Backup
-                    </button>
+
+                    {/* Restore Zone */}
+                    <div className="space-y-6 border-l border-slate-100 pl-0 md:pl-12">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                                <UploadCloud size={20} className="mr-2 text-blue-500"/> Restore Data
+                            </h2>
+                            <p className="text-sm text-slate-500 mt-1">Recover lost data by uploading a previous backup file.</p>
+                        </div>
+
+                         <div className="bg-red-50 border border-red-100 rounded-lg p-4 text-xs text-red-700 flex items-start">
+                             <AlertTriangle size={16} className="mr-2 flex-shrink-0 mt-0.5"/>
+                             <span>Warning: Importing a file will completely overwrite all current system data.</span>
+                         </div>
+
+                        <div className="relative group">
+                            <input 
+                                type="file" 
+                                accept=".json"
+                                onChange={handleRestore}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div className="w-full bg-white border-2 border-dashed border-slate-300 rounded-xl p-4 text-center group-hover:border-slate-900 transition-colors">
+                                <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900">Click to Select Backup File (.json)</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h2 className="text-lg font-bold text-slate-900 flex items-center">
-                        <Database size={20} className="mr-2 text-slate-400"/> Backup History
-                    </h2>
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                            <Database size={20} className="mr-2 text-slate-400"/> Backup History
+                        </h2>
+                        <button 
+                            onClick={() => createBackup()}
+                            className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition-colors"
+                        >
+                            + Manual Snapshot
+                        </button>
+                    </div>
                     <button 
                         onClick={() => downloadBackup()} 
                         className="btn-gradient-dark text-white px-5 py-2.5 rounded-xl hover:shadow-lg transition-all text-sm font-bold flex items-center"

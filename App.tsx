@@ -15,6 +15,7 @@ import { Reports } from './pages/Reports';
 import { Stands } from './pages/Stands';
 import { Login } from './pages/Login';
 import { Installments } from './pages/Installments';
+import { Cashier } from './pages/Cashier';
 
 const AppContent: React.FC = () => {
   const { currentPath, isAuthenticated } = useApp();
@@ -37,6 +38,7 @@ const AppContent: React.FC = () => {
     case '/reports': content = <Reports />; break;
     case '/agents': content = <Agents />; break;
     case '/admin': content = <Admin />; break;
+    case '/cashier': content = <Cashier />; break;
     default: content = <Dashboard />;
   }
 

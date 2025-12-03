@@ -80,7 +80,8 @@ export interface Payment {
   saleId: string;
   amount: number;
   date: string;
-  reference: string;
+  reference: string; // Bank Ref / System Ref
+  manualReceiptNo?: string; // Physical Receipt Book Number
   type: 'DEPOSIT' | 'INSTALLMENT' | 'FULL_PAYMENT';
 }
 

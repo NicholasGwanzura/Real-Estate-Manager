@@ -47,9 +47,11 @@ interface AppContextType extends AppState {
   createBackup: () => void;
   toggleAutoBackup: (enabled: boolean) => void;
   downloadBackup: (backupId?: string) => void;
+  importDatabase: (jsonString: string) => boolean;
   login: (email: string, pass: string) => boolean;
   logout: () => void;
   register: (name: string, email: string, pass: string) => void;
+  lastSaved: Date;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -105,6 +107,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Backup State
   const [backups, setBackups] = useState<Backup[]>(() => getPersistedState('backups', []));
   const [isAutoBackupEnabled, setIsAutoBackupEnabled] = useState(() => getPersistedState('isAutoBackupEnabled', false));
+  const [lastSaved, setLastSaved] = useState(new Date());
+
+  // Safety Guard: Prevent overwriting local storage on initial mount if state is empty
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Refs for consistent state in intervals/backups
   const stateRef = useRef({ users, clients, developers, stands, sales, payments, agreements });
@@ -113,22 +119,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     stateRef.current = { users, clients, developers, stands, sales, payments, agreements };
   }, [users, clients, developers, stands, sales, payments, agreements]);
 
+  // Initialization Effect
+  useEffect(() => {
+    // Mark as initialized after first render to allow saving
+    setIsInitialized(true);
+  }, []);
+
   // Persist State Effect
   useEffect(() => {
+    // CRITICAL: Don't save if we haven't finished initializing, or if we are about to save empty/default data over existing data
+    if (!isInitialized) return;
+
     const db = {
         currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  }, [currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated]);
+    setLastSaved(new Date());
+  }, [currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated, isInitialized]);
 
   // Auto Backup Effect (Hourly)
   useEffect(() => {
     let interval: any;
     if (isAutoBackupEnabled) {
-      // Create initial backup when enabled
-      // We use a timeout to avoid collision with initial render
       setTimeout(() => createBackup(), 1000);
-
       interval = setInterval(() => {
         createBackup();
       }, 3600000); 
@@ -137,7 +150,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [isAutoBackupEnabled]);
 
   const login = (email: string, pass: string): boolean => {
-      // Find user by email (or username for admin) and password
       const user = users.find(u => (u.email === email || (u.email === 'admin' && email === 'admin')) && u.password === pass);
       if (user) {
           setCurrentUser(user);
@@ -152,7 +164,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = () => {
       addLog('LOGOUT', `User ${currentUser.name} logged out`);
       setIsAuthenticated(false);
-      setCurrentUser(INITIAL_USERS[0]); // Reset to default just in case
+      setCurrentUser(INITIAL_USERS[0]); 
       navigate('/');
   };
 
@@ -162,7 +174,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           name,
           email,
           password: pass,
-          role: UserRole.AGENT // Default role for self-registration
+          role: UserRole.AGENT 
       };
       setUsers([...users, newUser]);
       setCurrentUser(newUser);
@@ -183,10 +195,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       recordCount
     };
     
-    setBackups(prev => [newBackup, ...prev].slice(0, 10)); // Keep last 10
-    
-    // Only notify if we are in admin context, hard to check inside interval, so we skip notification for auto-backups to avoid spam
-    // Or we can check ref to current user if we tracked it.
+    setBackups(prev => [newBackup, ...prev].slice(0, 10)); 
   };
 
   const toggleAutoBackup = (enabled: boolean) => {
@@ -202,7 +211,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         generatedBy: currentUser.name
       },
       data: {
-        users, clients, developers, stands, sales, payments, agreements, commissions, templates
+        users, clients, developers, stands, sales, payments, agreements, commissions, templates, auditLogs, notifications, backups
       }
     };
 
@@ -217,6 +226,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     URL.revokeObjectURL(url);
     
     addLog('DATA_EXPORT', 'Manual backup downloaded');
+  };
+
+  const importDatabase = (jsonString: string): boolean => {
+    try {
+        const parsed = JSON.parse(jsonString);
+        // Supports two formats: Full backup with metadata, or raw DB dump
+        const db = parsed.data || parsed;
+
+        if (db.users && Array.isArray(db.users)) setUsers(db.users);
+        if (db.clients && Array.isArray(db.clients)) setClients(db.clients);
+        if (db.developers && Array.isArray(db.developers)) setDevelopers(db.developers);
+        if (db.stands && Array.isArray(db.stands)) setStands(db.stands);
+        if (db.sales && Array.isArray(db.sales)) setSales(db.sales);
+        if (db.payments && Array.isArray(db.payments)) setPayments(db.payments);
+        if (db.agreements && Array.isArray(db.agreements)) setAgreements(db.agreements);
+        if (db.commissions && Array.isArray(db.commissions)) setCommissions(db.commissions);
+        if (db.auditLogs && Array.isArray(db.auditLogs)) setAuditLogs(db.auditLogs);
+        
+        addLog('DATA_IMPORT', 'Database restored from backup file');
+        return true;
+    } catch (e) {
+        console.error("Import failed", e);
+        return false;
+    }
   };
 
   const addLog = (action: string, details: string) => {
@@ -367,8 +400,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if(payment.type === 'DEPOSIT') {
        setSales(prev => prev.map(s => s.id === payment.saleId ? {...s, depositPaid: s.depositPaid + payment.amount} : s));
     }
-    addLog('ADD_PAYMENT', `Payment of ${payment.amount} for sale ${payment.saleId}`);
-    triggerNotification('Payment Received', `Payment of $${payment.amount.toLocaleString()} logged.`, 'SUCCESS');
+    
+    const receiptInfo = payment.manualReceiptNo ? ` (Manual Ref: ${payment.manualReceiptNo})` : '';
+    addLog('ADD_PAYMENT', `Payment of ${payment.amount} for sale ${payment.saleId}${receiptInfo}`);
+    triggerNotification('Payment Received', `Payment of $${payment.amount.toLocaleString()} logged${receiptInfo}.`, 'SUCCESS');
   };
 
   const createAgreement = (agreement: SalesAgreement) => {
@@ -414,7 +449,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{
       currentUser, setCurrentUser, users, addUser, deleteUser, clients, addClient, deleteClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications, backups, isAutoBackupEnabled, isAuthenticated,
       addDeveloper, addStand, deleteStand, addSale, cancelSale, addPayment, createAgreement, addTemplate, updateAgreementStatus, markCommissionPaid, addLog, getAgentPerformance, markNotificationRead, clearNotifications,
-      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup, login, logout, register
+      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup, importDatabase, login, logout, register, lastSaved
     }}>
       {children}
     </AppContext.Provider>

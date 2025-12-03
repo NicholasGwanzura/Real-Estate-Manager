@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, User as UserIcon, LayoutGrid, Info, Calculator, Briefcase, Trash2, Edit2, X, Check, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Plus, User as UserIcon, LayoutGrid, Info, Calculator, Briefcase, Trash2, Edit2, X, Check, AlertTriangle, BarChart3, ShieldAlert } from 'lucide-react';
 import { StandStatus, Stand, UserRole, Developer } from '../types';
 
 export const Developers: React.FC = () => {
@@ -27,6 +27,7 @@ export const Developers: React.FC = () => {
   const [batchSize, setBatchSize] = useState('500');
   const [batchDeposit, setBatchDeposit] = useState('');
   const [batchTerms, setBatchTerms] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const activeDeveloper = developers.find(d => d.id === selectedDevId);
   const agents = users.filter(u => u.role === UserRole.AGENT);
@@ -93,6 +94,33 @@ export const Developers: React.FC = () => {
     const size = parseInt(batchSize);
     
     if (start && end && price && selectedDevId && end >= start) {
+      
+      // SAFETY CHECK: Limit batch size
+      const count = end - start + 1;
+      if (count > 50) {
+          alert("Safety Limit: You cannot generate more than 50 stands in a single batch. Please generate in smaller chunks.");
+          return;
+      }
+
+      // CONFIRMATION CHECK
+      const totalValue = count * price;
+      const confirmMsg = `
+      Please Confirm Batch Generation:
+      --------------------------------
+      Development: ${activeDeveloper?.name}
+      Range: Stand #${start} to #${end}
+      Total Units: ${count}
+      
+      Unit Price: $${price.toLocaleString()}
+      TOTAL VALUE: $${totalValue.toLocaleString()}
+      
+      Are you sure you want to proceed?
+      `;
+
+      if (!window.confirm(confirmMsg)) return;
+
+      setIsGenerating(true);
+
       // Resolve Defaults
       let resolvedFinancing = batchTerms;
       if (!resolvedFinancing && activeDeveloper?.financingTerms) {
@@ -112,43 +140,43 @@ export const Developers: React.FC = () => {
         }
       }
 
-      let addedCount = 0;
-      let skippedCount = 0;
+      setTimeout(() => {
+        let addedCount = 0;
+        let skippedCount = 0;
 
-      for (let i = start; i <= end; i++) {
-        // Check for duplicates
-        const exists = stands.some(s => s.developerId === selectedDevId && s.standNumber === i.toString());
-        
-        if (exists) {
-            skippedCount++;
-            continue;
+        for (let i = start; i <= end; i++) {
+            // Check for duplicates
+            const exists = stands.some(s => s.developerId === selectedDevId && s.standNumber === i.toString());
+            
+            if (exists) {
+                skippedCount++;
+                continue;
+            }
+
+            const stand: Stand = {
+            id: `${selectedDevId}-${i}`,
+            standNumber: i.toString(),
+            developerId: selectedDevId,
+            price: price, // PRICE IS SET HERE PER STAND
+            size: size || 500,
+            status: StandStatus.AVAILABLE,
+            depositRequired: isNaN(resolvedDeposit) ? undefined : resolvedDeposit,
+            financingTerms: resolvedFinancing || undefined
+            };
+            addStand(stand);
+            addedCount++;
         }
-
-        const stand: Stand = {
-          id: `${selectedDevId}-${i}`,
-          standNumber: i.toString(),
-          developerId: selectedDevId,
-          price: price,
-          size: size || 500,
-          status: StandStatus.AVAILABLE,
-          depositRequired: isNaN(resolvedDeposit) ? undefined : resolvedDeposit,
-          financingTerms: resolvedFinancing || undefined
-        };
-        addStand(stand);
-        addedCount++;
-      }
-      
-      setBatchStart('');
-      setBatchEnd('');
-      setBatchPrice('');
-      setBatchDeposit('');
-      setBatchTerms('');
-      
-      if (skippedCount > 0) {
-          alert(`Added ${addedCount} stands. Skipped ${skippedCount} duplicates.`);
-      } else {
-          alert(`Successfully generated ${addedCount} stands!`);
-      }
+        
+        setBatchStart('');
+        setBatchEnd('');
+        setIsGenerating(false);
+        
+        if (skippedCount > 0) {
+            alert(`Added ${addedCount} stands. Skipped ${skippedCount} duplicates.`);
+        } else {
+            alert(`Successfully generated ${addedCount} stands! Total Potential Value: $${(addedCount * price).toLocaleString()}`);
+        }
+      }, 500); // Simulate processing
     }
   };
 
@@ -163,6 +191,10 @@ export const Developers: React.FC = () => {
     }
     return activeDeveloper.depositTerms;
   };
+
+  // Calculation for Preview
+  const previewCount = (parseInt(batchEnd) - parseInt(batchStart)) + 1;
+  const previewTotal = previewCount > 0 && batchPrice ? previewCount * parseInt(batchPrice) : 0;
 
   return (
     <div className="space-y-6">
@@ -300,7 +332,7 @@ export const Developers: React.FC = () => {
                 <input type="number" className="premium-input" placeholder="500" value={batchSize} onChange={(e) => setBatchSize(e.target.value)} />
             </div>
             <div>
-                <label className="premium-label">Price ($)</label>
+                <label className="premium-label">Unit Price ($)</label>
                 <input type="number" className="premium-input" placeholder="150000" value={batchPrice} onChange={(e) => setBatchPrice(e.target.value)} />
             </div>
             <div>
@@ -328,13 +360,26 @@ export const Developers: React.FC = () => {
             </div>
         </div>
         
-        <div className="mt-8 flex justify-between items-center">
-             <div className="flex items-center text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                <AlertTriangle size={14} className="mr-2"/>
-                Duplicate stand numbers will be automatically skipped.
+        <div className="mt-8 flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+             <div>
+                 <div className="flex items-center text-xs text-amber-600 bg-amber-100/50 px-3 py-1 rounded-lg w-fit mb-2">
+                    <ShieldAlert size={14} className="mr-2"/>
+                    Batch Limit: Max 50 units per batch to prevent errors.
+                 </div>
+                 {previewTotal > 0 && (
+                     <div className="text-sm">
+                         <span className="text-slate-500">Preview Total Value: </span>
+                         <span className="font-bold text-slate-900 text-lg ml-1">${previewTotal.toLocaleString()}</span>
+                         <span className="text-xs text-slate-400 ml-2">({previewCount} units x ${parseInt(batchPrice).toLocaleString()})</span>
+                     </div>
+                 )}
              </div>
-            <button onClick={handleBatchAddStands} className="bg-slate-900 text-white px-8 py-3 rounded-lg hover:bg-slate-800 text-sm font-bold shadow-lg shadow-slate-200 transition-all active:scale-95">
-                GENERATE STANDS
+            <button 
+                onClick={handleBatchAddStands} 
+                disabled={isGenerating}
+                className="bg-slate-900 text-white px-8 py-3 rounded-lg hover:bg-slate-800 text-sm font-bold shadow-lg shadow-slate-200 transition-all active:scale-95 disabled:opacity-50"
+            >
+                {isGenerating ? 'GENERATING...' : 'GENERATE STANDS'}
             </button>
         </div>
       </div>
@@ -373,7 +418,7 @@ export const Developers: React.FC = () => {
                     />
                   </div>
                    <div>
-                    <label className="premium-label">Total Stands (Planned)</label>
+                    <label className="premium-label">Total Stands</label>
                     <input 
                         type="number" 
                         placeholder="e.g. 100" 
