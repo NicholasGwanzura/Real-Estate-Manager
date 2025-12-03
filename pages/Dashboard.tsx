@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
-import { DollarSign, Users, Building, AlertCircle, Sparkles, TrendingUp, Calendar, ArrowRight } from 'lucide-react';
+import { DollarSign, Users, Building, AlertCircle, Sparkles, TrendingUp, Calendar, ArrowRight, X } from 'lucide-react';
 import { analyzeSalesData } from '../services/geminiService';
 
 const StatCard = ({ title, value, subValue, icon: Icon, gradient }: any) => (
@@ -29,6 +29,7 @@ export const Dashboard: React.FC = () => {
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
+  const [showReleaseNotes, setShowReleaseNotes] = useState(true);
 
   const totalRevenue = sales.reduce((acc, sale) => acc + sale.salePrice, 0);
   const totalStands = stands.length;
@@ -84,6 +85,29 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Release Notes Banner */}
+      {showReleaseNotes && (
+          <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-4 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center relative animate-in slide-in-from-top-4">
+              <div>
+                  <h3 className="font-bold text-lg flex items-center">
+                      <span className="bg-amber-500 text-xs px-2 py-0.5 rounded text-white mr-2">v1.1.0</span> 
+                      System Update: Live Release Notes
+                  </h3>
+                  <div className="text-sm text-slate-300 mt-1 space-y-1">
+                      <p>• <strong>Cashier Module:</strong> Now available for all agents to process payments and issue physical receipts.</p>
+                      <p>• <strong>Commission Fix:</strong> Calculations explicitly set to 5% of Total Stand Value (ignoring deposits).</p>
+                      <p>• <strong>Safety Guard:</strong> Auto-save protected to prevent data loss on reload. Database Restore enabled.</p>
+                  </div>
+              </div>
+              <button 
+                onClick={() => setShowReleaseNotes(false)} 
+                className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              >
+                  <X size={16}/>
+              </button>
+          </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Dashboard</h1>

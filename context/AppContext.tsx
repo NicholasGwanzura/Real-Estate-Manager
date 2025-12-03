@@ -355,8 +355,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     const stand = stands.find(s => s.id === sale.standId);
     
-    // Create Commission
+    // Create Commission based on TOTAL SALE PRICE (not deposit)
+    // 5% Agency Commission
     const totalComm = sale.salePrice * 0.05;
+    // 2.5% Agent Commission
     const agentComm = sale.salePrice * 0.025;
     
     const newCommission: Commission = {

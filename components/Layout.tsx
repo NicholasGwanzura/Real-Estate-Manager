@@ -101,12 +101,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <NavItem to="/sales" icon={BadgeDollarSign} label="Sales Desk" active={currentPath === '/sales'} onClick={handleNavClick} />
             <NavItem to="/agreements" icon={FileText} label="Agreements" active={currentPath === '/agreements'} onClick={handleNavClick} />
             
+            {/* Financials - Available to Admins AND Agents (Cashiers) */}
+            <div className="mt-6 mb-2 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                <span className="w-full border-b border-slate-100 pb-1">Financials</span>
+            </div>
+            <NavItem to="/cashier" icon={Receipt} label="Transactions" active={currentPath === '/cashier'} onClick={handleNavClick} />
+            
             {isAdmin && (
                 <>
-                    <div className="mt-6 mb-2 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                        <span className="w-full border-b border-slate-100 pb-1">Financials</span>
-                    </div>
-                    <NavItem to="/cashier" icon={Receipt} label="Transactions" active={currentPath === '/cashier'} onClick={handleNavClick} />
                     <NavItem to="/installments" icon={CalendarClock} label="Installment Tracker" active={currentPath === '/installments'} onClick={handleNavClick} />
                     <NavItem to="/commissions" icon={Wallet} label="Commissions" active={currentPath === '/commissions'} onClick={handleNavClick} />
                     <NavItem to="/finance" icon={PieChart} label="Reconciliation" active={currentPath === '/finance'} onClick={handleNavClick} />
@@ -140,7 +142,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name}</p>
-                <p className="text-[10px] text-slate-500 truncate font-medium">{currentUser.role}</p>
+                <p className="text-[10px] text-slate-500 truncate font-medium">{currentUser.role} • v1.1.0</p>
               </div>
               <button 
                 onClick={logout}

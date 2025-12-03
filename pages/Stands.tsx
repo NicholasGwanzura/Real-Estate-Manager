@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { StandStatus, Stand, UserRole } from '../types';
-import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle, Layers } from 'lucide-react';
+import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle, Layers, Phone, Mail, ArrowRight } from 'lucide-react';
 
 export const Stands: React.FC = () => {
   const { stands, developers, sales, payments, clients, users, currentUser, deleteStand } = useApp();
@@ -316,22 +316,34 @@ export const Stands: React.FC = () => {
                                             const agent = users.find(u => u.id === sale.agentId);
                                             return (
                                                 <div key={sale.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                                                    <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex justify-between items-start mb-4">
                                                         <div>
                                                             <div className="flex items-center space-x-2">
                                                                 <p className="font-bold text-slate-900 text-lg">{client?.name || sale.clientName}</p>
                                                                 {sale.status === 'CANCELLED' && <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 rounded-full">CANCELLED</span>}
                                                             </div>
-                                                            <p className="text-xs text-slate-500">Sold by Agent: {agent?.name || 'Unknown'}</p>
+                                                            <p className="text-xs text-slate-500 mt-1">Sold by Agent: {agent?.name || 'Unknown'}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-bold text-slate-900">${sale.salePrice.toLocaleString()}</p>
-                                                            <p className="text-xs text-slate-500 font-mono">{sale.saleDate}</p>
+                                                            <p className="font-bold text-slate-900 text-lg">${sale.salePrice.toLocaleString()}</p>
+                                                            <p className="text-xs text-slate-500 font-mono flex items-center justify-end">
+                                                                <Calendar size={10} className="mr-1"/> {sale.saleDate}
+                                                            </p>
                                                         </div>
                                                     </div>
+                                                    
+                                                    {/* Client Contact Details inside history */}
+                                                    {client && (
+                                                        <div className="flex flex-wrap gap-4 text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-100 mb-4 shadow-sm">
+                                                            {client.email && <span className="flex items-center"><Mail size={12} className="mr-1.5 text-slate-400"/> {client.email}</span>}
+                                                            {client.phone && <span className="flex items-center"><Phone size={12} className="mr-1.5 text-slate-400"/> {client.phone}</span>}
+                                                            {client.idNumber && <span className="flex items-center"><CreditCard size={12} className="mr-1.5 text-slate-400"/> ID: {client.idNumber}</span>}
+                                                        </div>
+                                                    )}
+
                                                     <div className="grid grid-cols-2 gap-4 text-xs text-slate-600 pt-3 border-t border-slate-200/60">
                                                         <div className="flex items-center">
-                                                            <CreditCard size={12} className="mr-1.5 text-slate-400"/>
+                                                            <div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>
                                                             Deposit: <span className="font-semibold ml-1">${sale.depositPaid.toLocaleString()}</span>
                                                         </div>
                                                         <div className="flex items-center justify-end">
@@ -350,7 +362,7 @@ export const Stands: React.FC = () => {
                                         <DollarSign size={16} className="mr-2 text-slate-400"/> Payment Ledger
                                     </h3>
                                     {associatedPayments.length > 0 ? (
-                                        <div className="border border-slate-100 rounded-xl overflow-hidden">
+                                        <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
                                             <table className="w-full text-sm text-left">
                                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
                                                     <tr>
@@ -364,9 +376,17 @@ export const Stands: React.FC = () => {
                                                     {associatedPayments.map(payment => (
                                                         <tr key={payment.id} className="hover:bg-slate-50/50">
                                                             <td className="px-4 py-3 text-slate-600 flex items-center">
-                                                                <Calendar size={12} className="mr-2 text-slate-300"/> {payment.date}
+                                                                <Calendar size={12} className="mr-2 text-slate-300"/> 
+                                                                {new Date(payment.date).toLocaleDateString()}
                                                             </td>
-                                                            <td className="px-4 py-3 font-mono text-xs text-slate-500">{payment.reference}</td>
+                                                            <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                                                                {payment.manualReceiptNo ? (
+                                                                    <span className="flex flex-col">
+                                                                        <span className="font-bold text-slate-700">{payment.manualReceiptNo}</span>
+                                                                        <span className="text-[9px] opacity-70">{payment.reference}</span>
+                                                                    </span>
+                                                                ) : payment.reference}
+                                                            </td>
                                                             <td className="px-4 py-3 text-xs font-medium text-slate-700">
                                                                 {payment.type === 'DEPOSIT' ? 'Deposit' : 
                                                                  payment.type === 'FULL_PAYMENT' ? 'Settlement' : 'Installment'}
@@ -376,7 +396,7 @@ export const Stands: React.FC = () => {
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    <tr className="bg-slate-50 font-bold text-slate-900">
+                                                    <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200">
                                                         <td colSpan={3} className="px-4 py-3 text-right">Total Paid</td>
                                                         <td className="px-4 py-3 text-right">
                                                             ${associatedPayments.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
@@ -386,7 +406,7 @@ export const Stands: React.FC = () => {
                                             </table>
                                         </div>
                                     ) : (
-                                        <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400">
+                                        <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-slate-50/50">
                                             No payments recorded yet.
                                         </div>
                                     )}

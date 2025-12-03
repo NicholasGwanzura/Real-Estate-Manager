@@ -110,8 +110,8 @@ export const Commissions: React.FC = () => {
                 <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Stand / Property</th>
                 <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Agent</th>
                 <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider text-right">Sale Price</th>
-                <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider text-right">Agency (5%)</th>
-                <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider text-right">Agent (2.5%)</th>
+                <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider text-right">Agency (5% of Value)</th>
+                <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider text-right">Agent (2.5% of Value)</th>
                 <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Status</th>
                 <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Action</th>
               </tr>
