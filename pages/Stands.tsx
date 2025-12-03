@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { StandStatus, Stand, UserRole } from '../types';
-import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle, Layers } from 'lucide-react';
 
 export const Stands: React.FC = () => {
   const { stands, developers, sales, payments, clients, users, currentUser, deleteStand } = useApp();
@@ -64,6 +64,66 @@ export const Stands: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
+            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Total Units</p>
+            <p className="text-2xl font-bold text-slate-900">{filteredStands.length}</p>
+         </div>
+         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
+            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Inventory Value</p>
+            <p className="text-2xl font-bold text-slate-900">${(totalValue / 1000000).toFixed(2)}M</p>
+         </div>
+         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
+            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Avg. Price</p>
+            <p className="text-2xl font-bold text-slate-900">${Math.round(avgPrice / 1000)}k</p>
+         </div>
+         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
+            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Availability</p>
+            <p className="text-2xl font-bold text-green-600">
+               {filteredStands.length > 0 ? Math.round((filteredStands.filter(s => s.status === 'AVAILABLE').length / filteredStands.length) * 100) : 0}%
+            </p>
+         </div>
+      </div>
+
+      {/* Inventory by Development Summary Table */}
+      {filterDev === 'ALL' && !searchTerm && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+             <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center">
+                 <Layers size={16} className="text-amber-500 mr-2" />
+                 <h3 className="font-bold text-slate-900 text-sm">Inventory by Development</h3>
+             </div>
+             <div className="overflow-x-auto">
+                 <table className="w-full text-sm text-left">
+                     <thead className="bg-white border-b border-slate-200">
+                         <tr>
+                             <th className="px-6 py-3 text-slate-500 font-semibold text-xs uppercase">Development</th>
+                             <th className="px-6 py-3 text-right text-slate-500 font-semibold text-xs uppercase">Total Units</th>
+                             <th className="px-6 py-3 text-right text-green-600 font-semibold text-xs uppercase">Available</th>
+                             <th className="px-6 py-3 text-right text-slate-900 font-semibold text-xs uppercase">Sold</th>
+                             <th className="px-6 py-3 text-right text-amber-600 font-semibold text-xs uppercase">Reserved</th>
+                         </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                         {developers.map(dev => {
+                             const devStands = stands.filter(s => s.developerId === dev.id);
+                             if(devStands.length === 0) return null;
+                             return (
+                                 <tr key={dev.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setFilterDev(dev.id)}>
+                                     <td className="px-6 py-3 font-bold text-slate-900">{dev.name}</td>
+                                     <td className="px-6 py-3 text-right font-medium">{devStands.length}</td>
+                                     <td className="px-6 py-3 text-right font-bold text-green-600 bg-green-50/30">{devStands.filter(s => s.status === 'AVAILABLE').length}</td>
+                                     <td className="px-6 py-3 text-right font-medium">{devStands.filter(s => s.status === 'SOLD').length}</td>
+                                     <td className="px-6 py-3 text-right font-medium text-amber-600">{devStands.filter(s => s.status === 'RESERVED').length}</td>
+                                 </tr>
+                             );
+                         })}
+                     </tbody>
+                 </table>
+             </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-6 items-end">
          <div className="relative flex-1 w-full">
@@ -115,28 +175,6 @@ export const Stands: React.FC = () => {
                 <XCircle size={20} />
             </button>
          )}
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
-            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Total Units</p>
-            <p className="text-2xl font-bold text-slate-900">{filteredStands.length}</p>
-         </div>
-         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
-            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Inventory Value</p>
-            <p className="text-2xl font-bold text-slate-900">${(totalValue / 1000000).toFixed(2)}M</p>
-         </div>
-         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
-            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Avg. Price</p>
-            <p className="text-2xl font-bold text-slate-900">${Math.round(avgPrice / 1000)}k</p>
-         </div>
-         <div className="bg-white p-4 rounded-xl border border-slate-100 text-center shadow-sm">
-            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Availability</p>
-            <p className="text-2xl font-bold text-green-600">
-               {filteredStands.length > 0 ? Math.round((filteredStands.filter(s => s.status === 'AVAILABLE').length / filteredStands.length) * 100) : 0}%
-            </p>
-         </div>
       </div>
 
       {/* Grid */}

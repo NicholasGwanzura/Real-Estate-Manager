@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, User as UserIcon, LayoutGrid, Info, Calculator, Briefcase, Trash2, Edit2, X, Check, AlertTriangle } from 'lucide-react';
+import { Plus, User as UserIcon, LayoutGrid, Info, Calculator, Briefcase, Trash2, Edit2, X, Check, AlertTriangle, BarChart3 } from 'lucide-react';
 import { StandStatus, Stand, UserRole, Developer } from '../types';
 
 export const Developers: React.FC = () => {
@@ -179,6 +179,9 @@ export const Developers: React.FC = () => {
         {developers.map(dev => {
             const devStands = stands.filter(s => s.developerId === dev.id);
             const soldCount = devStands.filter(s => s.status === StandStatus.SOLD).length;
+            const reservedCount = devStands.filter(s => s.status === StandStatus.RESERVED).length;
+            const availableCount = devStands.filter(s => s.status === StandStatus.AVAILABLE).length;
+            
             const mandateHolder = users.find(u => u.id === dev.mandateHolderId);
             const isAdmin = currentUser.role === UserRole.ADMIN;
             
@@ -204,23 +207,27 @@ export const Developers: React.FC = () => {
                 
                 <div className="mt-4 space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="flex justify-between text-xs text-slate-600 border-b border-slate-200 pb-2">
-                     <span>Planned Stands</span>
-                     <span className="font-semibold text-slate-900">{dev.totalStands}</span>
+                     <span>Total Inventory</span>
+                     <span className="font-semibold text-slate-900">{devStands.length} Units</span>
                   </div>
                   <div className="flex justify-between text-xs text-slate-600 border-b border-slate-200 pb-2">
-                     <span>Financing Terms</span>
-                     <span className="font-medium text-right max-w-[60%] truncate text-slate-900">{dev.financingTerms || 'None'}</span>
+                     <span>Available</span>
+                     <span className="font-bold text-green-600">{availableCount} Units</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 border-b border-slate-200 pb-2">
+                     <span>Sold</span>
+                     <span className="font-semibold text-slate-900">{soldCount} Units</span>
                   </div>
                    <div className="flex justify-between text-xs text-slate-600">
-                     <span>Deposit Terms</span>
-                     <span className="font-medium text-slate-900">{dev.depositTerms || 'None'}</span>
+                     <span>Projected Total</span>
+                     <span className="font-medium text-slate-400">{dev.totalStands} (Planned)</span>
                   </div>
                 </div>
 
                 {mandateHolder ? (
                   <div className="mt-3 flex items-center text-xs text-slate-500 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
                     <Briefcase size={14} className="mr-2 text-amber-500"/>
-                    <span>Mandate Holder: <strong>{mandateHolder.name}</strong></span>
+                    <span>Mandate: <strong>{mandateHolder.name}</strong></span>
                   </div>
                 ) : (
                   <div className="mt-3 flex items-center text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 border-dashed">
@@ -231,11 +238,11 @@ export const Developers: React.FC = () => {
 
                 <div className="mt-4 pt-2">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Sales Velocity</span>
+                    <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Sales Progress</span>
                     <span className="font-bold text-slate-900 text-xs">{devStands.length > 0 ? Math.round((soldCount / devStands.length) * 100) : 0}%</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${devStands.length > 0 ? (soldCount / devStands.length) * 100 : 0}%` }}></div>
+                    <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${devStands.length > 0 ? (soldCount / devStands.length) * 100 : 0}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -267,6 +274,10 @@ export const Developers: React.FC = () => {
                          <div className="flex items-center">
                             <span className="font-semibold mr-2 text-slate-900">Deposit Config:</span> 
                             {activeDeveloper.depositTerms || 'None defined'}
+                         </div>
+                         <div className="flex items-center text-blue-600 font-medium">
+                            <BarChart3 size={16} className="mr-2"/>
+                            Current Inventory: {stands.filter(s => s.developerId === selectedDevId).length} Units
                          </div>
                      </div>
                  ) : (
@@ -362,7 +373,7 @@ export const Developers: React.FC = () => {
                     />
                   </div>
                    <div>
-                    <label className="premium-label">Total Stands</label>
+                    <label className="premium-label">Total Stands (Planned)</label>
                     <input 
                         type="number" 
                         placeholder="e.g. 100" 
