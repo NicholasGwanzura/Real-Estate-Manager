@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Layout } from './components/Layout';
@@ -12,9 +13,15 @@ import { Clients } from './pages/Clients';
 import { Admin } from './pages/Admin';
 import { Reports } from './pages/Reports';
 import { Stands } from './pages/Stands';
+import { Login } from './pages/Login';
+import { Installments } from './pages/Installments';
 
 const AppContent: React.FC = () => {
-  const { currentPath } = useApp();
+  const { currentPath, isAuthenticated } = useApp();
+
+  if (!isAuthenticated) {
+      return <Login />;
+  }
 
   let content;
   switch (currentPath) {
@@ -26,6 +33,7 @@ const AppContent: React.FC = () => {
     case '/agreements': content = <Agreements />; break;
     case '/commissions': content = <Commissions />; break;
     case '/finance': content = <Finance />; break;
+    case '/installments': content = <Installments />; break;
     case '/reports': content = <Reports />; break;
     case '/agents': content = <Agents />; break;
     case '/admin': content = <Admin />; break;

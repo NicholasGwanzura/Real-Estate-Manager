@@ -6,18 +6,20 @@ import { DollarSign, Users, Building, AlertCircle, Sparkles, TrendingUp, Calenda
 import { analyzeSalesData } from '../services/geminiService';
 
 const StatCard = ({ title, value, subValue, icon: Icon, gradient }: any) => (
-  <div className={`rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between text-white ${gradient}`}>
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-sm font-medium opacity-80">{title}</p>
-        <h3 className="text-3xl font-bold mt-2">{value}</h3>
-      </div>
-      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-    </div>
-    <div className="mt-4 text-sm font-medium flex items-center bg-white/10 w-fit px-2 py-1 rounded-full">
-        {subValue}
+  <div className={`card-premium p-6 rounded-2xl relative overflow-hidden group`}>
+    <div className={`absolute top-0 right-0 p-16 opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 transition-transform group-hover:scale-110 ${gradient}`}></div>
+    
+    <div className="relative z-10 flex flex-col justify-between h-full">
+        <div className="flex justify-between items-start mb-4">
+            <div className={`p-3 rounded-xl ${gradient.replace('bg-', 'bg-opacity-10 text-')}`}>
+                <Icon className={`w-6 h-6 ${gradient.replace('bg-', 'text-')}`} />
+            </div>
+            <span className="text-xs font-bold px-2 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-100">{subValue}</span>
+        </div>
+        <div>
+            <h3 className="text-3xl font-bold text-slate-900 tracking-tight">{value}</h3>
+            <p className="text-sm font-medium text-slate-500 mt-1">{title}</p>
+        </div>
     </div>
   </div>
 );
@@ -34,15 +36,12 @@ export const Dashboard: React.FC = () => {
   const occupancyRate = totalStands > 0 ? Math.round((soldStands / totalStands) * 100) : 0;
 
   // Modern Chart Data Preparation
-  // 1. Sales Trend (Mocked for monthly trend based on existing sales)
-  // Group sales by month
   const salesByMonth = sales.reduce((acc: any, sale) => {
-    const month = sale.saleDate.substring(0, 7); // YYYY-MM
+    const month = sale.saleDate.substring(0, 7);
     acc[month] = (acc[month] || 0) + sale.salePrice;
     return acc;
   }, {});
   
-  // Fill in gaps roughly for the demo
   const chartData = Object.keys(salesByMonth).sort().map(date => ({
     name: date,
     revenue: salesByMonth[date],
@@ -50,12 +49,10 @@ export const Dashboard: React.FC = () => {
   }));
   
   if (chartData.length === 0) {
-      // Add a dummy point if no data so chart renders with current month
       const currentMonth = new Date().toISOString().slice(0, 7);
       chartData.push({ name: currentMonth, revenue: 0, salesCount: 0 });
   }
 
-  // 2. Sales by Developer
   const salesByDev = developers.map(dev => {
     const devSales = sales.filter(s => s.developerId === dev.id);
     return { name: dev.name, revenue: devSales.reduce((acc, s) => acc + s.salePrice, 0) };
@@ -74,9 +71,9 @@ export const Dashboard: React.FC = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-lg text-sm">
+        <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-lg text-sm backdrop-blur-sm bg-opacity-90">
           <p className="font-bold text-slate-900 mb-1">{label}</p>
-          <p className="text-amber-600 font-mono">
+          <p className="text-amber-600 font-mono font-bold">
             ${payload[0].value.toLocaleString()}
           </p>
         </div>
@@ -87,13 +84,13 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Dashboard</h1>
-           <p className="text-slate-500">Overview of performance and inventory metrics.</p>
+           <p className="text-slate-500 mt-1">Real-time performance and inventory insights.</p>
         </div>
-        <div className="flex items-center space-x-2 text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm text-slate-600">
-           <Calendar size={16} />
+        <div className="flex items-center space-x-2 text-sm bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm text-slate-600 font-medium">
+           <Calendar size={16} className="text-amber-500" />
            <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </div>
       </div>
@@ -102,30 +99,30 @@ export const Dashboard: React.FC = () => {
         <StatCard 
             title="Total Revenue" 
             value={`$${(totalRevenue / 1000000).toFixed(2)}M`} 
-            subValue="+0% vs last month"
+            subValue="YTD"
             icon={DollarSign} 
             gradient="bg-slate-900" 
         />
         <StatCard 
             title="Inventory Status" 
             value={`${soldStands} / ${totalStands}`} 
-            subValue={`${totalStands - soldStands} Available`}
+            subValue="Units Sold"
             icon={Building} 
-            gradient="bg-slate-800" 
+            gradient="bg-blue-600" 
         />
         <StatCard 
-            title="Occupancy" 
+            title="Occupancy Rate" 
             value={`${occupancyRate}%`} 
             subValue="Target: 80%"
             icon={Users} 
-            gradient="bg-slate-900" 
+            gradient="bg-indigo-600" 
         />
         <StatCard 
             title="Avg. Sale Price" 
             value={`$${soldStands > 0 ? Math.round(totalRevenue / soldStands / 1000) : 0}k`} 
             subValue="Per Unit"
             icon={TrendingUp} 
-            gradient="bg-amber-600" 
+            gradient="bg-amber-500" 
         />
       </div>
 
@@ -138,6 +135,12 @@ export const Dashboard: React.FC = () => {
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0f172a" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="name" 
@@ -167,25 +170,25 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* AI Insight Panel */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full relative overflow-hidden">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full relative overflow-hidden ring-1 ring-slate-100">
            {/* Decorative bg */}
-           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-full opacity-50 pointer-events-none"></div>
+           <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-amber-100 to-orange-50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
 
           <div className="flex items-center space-x-2 mb-4 relative z-10">
-             <div className="p-1.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-md shadow-lg shadow-amber-200">
+             <div className="p-2 bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg shadow-lg shadow-amber-200">
                 <Sparkles className="w-4 h-4 text-white" />
              </div>
              <h3 className="text-lg font-bold text-slate-900">AI Analyst</h3>
           </div>
           
-          <div className="flex-1 bg-slate-50/50 rounded-xl p-4 mb-4 overflow-y-auto max-h-60 text-sm text-slate-700 border border-slate-100 custom-scrollbar">
+          <div className="flex-1 bg-slate-50/80 backdrop-blur rounded-xl p-5 mb-4 overflow-y-auto max-h-60 text-sm text-slate-700 border border-slate-100 custom-scrollbar shadow-inner">
             {aiResponse ? (
                 <div className="prose prose-sm prose-amber" dangerouslySetInnerHTML={{__html: aiResponse.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}} />
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-2">
-                    <Sparkles size={24} className="opacity-10" />
-                    <p className="italic text-center text-xs">"Analyze top performing agents"</p>
-                    <p className="italic text-center text-xs">"Show me revenue breakdown by developer"</p>
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+                    <Sparkles size={28} className="text-slate-200" />
+                    <p className="italic text-center text-xs font-medium">"Analyze top performing agents"</p>
+                    <p className="italic text-center text-xs font-medium">"Show me revenue breakdown by developer"</p>
                 </div>
             )}
           </div>
@@ -194,7 +197,7 @@ export const Dashboard: React.FC = () => {
               <div className="relative">
                   <input 
                     type="text" 
-                    className="w-full bg-slate-50 border-0 border-b-2 border-slate-200 rounded-none px-2 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-0 transition-colors placeholder-slate-400"
+                    className="w-full bg-slate-50 border-0 border-b-2 border-slate-200 rounded-t-lg px-3 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-0 transition-colors placeholder-slate-400 font-medium"
                     placeholder="Ask about your data..."
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
@@ -242,16 +245,16 @@ export const Dashboard: React.FC = () => {
              </div>
           </div>
            {/* Widget */}
-           <div className="bg-slate-900 rounded-2xl shadow-sm p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-32 bg-amber-500 rounded-full blur-3xl opacity-10 transform translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 left-0 p-32 bg-blue-600 rounded-full blur-3xl opacity-10 transform -translate-x-1/2 translate-y-1/2"></div>
+           <div className="btn-gradient-dark rounded-2xl shadow-lg p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-32 bg-amber-500 rounded-full blur-3xl opacity-10 transform translate-x-1/2 -translate-y-1/2 transition-transform duration-1000 group-hover:scale-125"></div>
+                <div className="absolute bottom-0 left-0 p-32 bg-blue-600 rounded-full blur-3xl opacity-10 transform -translate-x-1/2 translate-y-1/2 transition-transform duration-1000 group-hover:scale-125"></div>
                 
                 <h3 className="text-2xl font-bold mb-2 relative z-10">Sales Goals 2024</h3>
-                <p className="text-slate-400 mb-6 max-w-xs relative z-10 text-sm">System ready for new data input.</p>
-                <div className="w-full max-w-xs bg-white/10 rounded-full h-2 mb-2 relative z-10">
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]" style={{width: '0%'}}></div>
+                <p className="text-slate-400 mb-6 max-w-xs relative z-10 text-sm">Target acquisition phase initiated.</p>
+                <div className="w-full max-w-xs bg-white/10 rounded-full h-2 mb-2 relative z-10 overflow-hidden">
+                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] w-0 group-hover:w-1/4 transition-all duration-1000"></div>
                 </div>
-                <p className="text-xs text-slate-400 font-mono relative z-10 tracking-widest mt-2">0% COMPLETE</p>
+                <p className="text-xs text-slate-400 font-mono relative z-10 tracking-widest mt-2">SYSTEM ACTIVE</p>
            </div>
       </div>
     </div>

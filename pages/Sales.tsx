@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { StandStatus, Sale, UserRole } from '../types';
-import { CheckCircle, AlertOctagon, Search, Wand2, UserPlus, Users, BadgeDollarSign, XCircle, Ban } from 'lucide-react';
+import { CheckCircle, AlertOctagon, Search, Wand2, UserPlus, Users, BadgeDollarSign, XCircle, Ban, ArrowDown01 } from 'lucide-react';
 
 export const Sales: React.FC = () => {
   const { developers, stands, sales, addSale, cancelSale, currentUser, clients, navigate, users } = useApp();
@@ -76,6 +76,15 @@ export const Sales: React.FC = () => {
   };
 
   const filteredSales = sales.filter(s => s.developerId === selectedDev);
+  
+  // Get Stands Sorted Numerically for Dropdown
+  const availableStandsSorted = stands
+        .filter(s => s.developerId === selectedDev && s.status === StandStatus.AVAILABLE)
+        .sort((a, b) => {
+          const numA = parseInt(a.standNumber.replace(/\D/g, '')) || 0;
+          const numB = parseInt(b.standNumber.replace(/\D/g, '')) || 0;
+          return numA - numB;
+        });
 
   return (
     <div className="space-y-6">
@@ -101,24 +110,27 @@ export const Sales: React.FC = () => {
 
              <div>
                 <label className="premium-label flex justify-between">
-                    Stand Selection
+                    Stand Selection (Sequential)
                     <button type="button" onClick={handleAutoAllocate} className="text-[10px] text-amber-600 flex items-center hover:underline uppercase tracking-wide font-bold">
                         <Wand2 size={10} className="mr-1"/> Auto Next
                     </button>
                 </label>
-                <select 
-                  className="premium-input"
-                  value={targetStandId}
-                  onChange={(e) => setTargetStandId(e.target.value)}
-                >
-                  <option value="">Select a Stand...</option>
-                  {stands
-                    .filter(s => s.developerId === selectedDev && s.status === StandStatus.AVAILABLE)
-                    .map(s => (
-                      <option key={s.id} value={s.id}>Stand {s.standNumber} - ${s.price.toLocaleString()}</option>
-                  ))}
-                  {targetStand && !isAvailable && <option value={targetStand.id}>Stand {targetStand.standNumber} (UNAVAILABLE)</option>}
-                </select>
+                <div className="relative">
+                    <select 
+                      className="premium-input"
+                      value={targetStandId}
+                      onChange={(e) => setTargetStandId(e.target.value)}
+                    >
+                      <option value="">Select Next Available Stand...</option>
+                      {availableStandsSorted.map(s => (
+                          <option key={s.id} value={s.id}>Stand {s.standNumber} - ${s.price.toLocaleString()}</option>
+                      ))}
+                      {targetStand && !isAvailable && <option value={targetStand.id}>Stand {targetStand.standNumber} (UNAVAILABLE)</option>}
+                    </select>
+                    {availableStandsSorted.length > 0 && (
+                        <ArrowDown01 size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none mr-6" />
+                    )}
+                </div>
                 {targetStandId && !isAvailable && (
                     <div className="text-red-500 text-xs mt-2 flex items-center font-medium">
                         <AlertOctagon size={12} className="mr-1"/> Stand is currently {targetStand?.status.toLowerCase()}.

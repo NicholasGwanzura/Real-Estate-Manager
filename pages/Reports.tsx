@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Printer, TrendingUp, DollarSign, Wallet, Building2, Filter } from 'lucide-react';
+import { Printer, TrendingUp, DollarSign, Wallet, Building2, Filter, AlertCircle, CheckCircle } from 'lucide-react';
 
 export const Reports: React.FC = () => {
   const { sales, developers, commissions, payments, stands } = useApp();
-  const [activeTab, setActiveTab] = useState<'sales' | 'finance' | 'commissions' | 'developments'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'finance' | 'commissions' | 'developments' | 'reconciliation'>('sales');
+  const [reconDevId, setReconDevId] = useState<string>('');
 
   const handlePrint = () => {
     window.print();
@@ -38,6 +39,54 @@ export const Reports: React.FC = () => {
   const totalCommissions = commissions.reduce((acc, c) => acc + c.agentCommission, 0);
   const paidCommissions = commissions.filter(c => c.status === 'PAID').reduce((acc, c) => acc + c.agentCommission, 0);
 
+  // RECONCILIATION DATA
+  const getReconData = () => {
+      let filteredSales = sales.filter(s => s.status !== 'CANCELLED');
+      if (reconDevId) {
+          filteredSales = filteredSales.filter(s => s.developerId === reconDevId);
+      }
+
+      const rows = filteredSales.map(sale => {
+          const stand = stands.find(s => s.id === sale.standId);
+          const dev = developers.find(d => d.id === sale.developerId);
+          const salePayments = payments.filter(p => p.saleId === sale.id);
+          const totalPaid = salePayments.reduce((sum, p) => sum + p.amount, 0);
+          
+          // Calculate Net
+          const agencyFee = sale.salePrice * 0.05;
+          const netToDev = sale.salePrice - agencyFee;
+          const balance = netToDev - totalPaid; // Outstanding NET balance
+          
+          const percentPaid = netToDev > 0 ? (totalPaid / netToDev) * 100 : 0;
+
+          return {
+              id: sale.id,
+              standNumber: stand?.standNumber || 'N/A',
+              devName: dev?.name || 'Unknown',
+              clientName: sale.clientName,
+              saleDate: sale.saleDate,
+              price: sale.salePrice,
+              netToDev: netToDev,
+              agencyFee: agencyFee,
+              paid: totalPaid,
+              balance: balance,
+              percentPaid
+          };
+      });
+
+      const summary = {
+          totalExpected: rows.reduce((acc, r) => acc + r.price, 0),
+          totalNetExpected: rows.reduce((acc, r) => acc + r.netToDev, 0),
+          totalCollected: rows.reduce((acc, r) => acc + r.paid, 0),
+          totalOutstanding: rows.reduce((acc, r) => acc + r.balance, 0), // Net Outstanding
+          count: rows.length
+      };
+
+      return { rows, summary };
+  };
+
+  const reconData = getReconData();
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -66,12 +115,12 @@ export const Reports: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit print:hidden">
-          {['sales', 'finance', 'commissions', 'developments'].map((tab) => (
+      <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit print:hidden overflow-x-auto">
+          {['sales', 'finance', 'commissions', 'developments', 'reconciliation'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
@@ -215,6 +264,105 @@ export const Reports: React.FC = () => {
                         </ResponsiveContainer>
                     </div>
                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* RECONCILIATION REPORT (Updated for Net Revenue) */}
+      {(activeTab === 'reconciliation') && (
+          <div className="space-y-6">
+              <div className="bg-white p-4 rounded-xl border border-slate-100 flex flex-col md:flex-row items-center justify-between print:border-black">
+                  <div className="flex items-center space-x-4 w-full md:w-auto">
+                      <Filter className="text-slate-400 hidden md:block" size={20}/>
+                      <div className="flex-1 md:flex-none">
+                          <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Filter by Developer</label>
+                          <select 
+                            className="bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
+                            value={reconDevId}
+                            onChange={(e) => setReconDevId(e.target.value)}
+                          >
+                            <option value="">All Developments</option>
+                            {developers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                      </div>
+                  </div>
+                  <div className="mt-4 md:mt-0 text-right">
+                      <span className="text-xs text-slate-400 block">Total Records Found</span>
+                      <span className="font-bold text-slate-900 text-lg">{reconData.summary.count}</span>
+                  </div>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 print:border-black print:shadow-none">
+                      <p className="text-sm text-slate-500 uppercase tracking-wide">Gross Contract Value</p>
+                      <p className="text-2xl font-bold text-slate-900">${reconData.summary.totalExpected.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 print:border-black print:shadow-none">
+                      <p className="text-sm text-slate-500 uppercase tracking-wide">Net Due (Less 5%)</p>
+                      <p className="text-2xl font-bold text-blue-600">${reconData.summary.totalNetExpected.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 print:border-black print:shadow-none">
+                      <p className="text-sm text-slate-500 uppercase tracking-wide">Outstanding (Net)</p>
+                      <p className="text-2xl font-bold text-red-500">${reconData.summary.totalOutstanding.toLocaleString()}</p>
+                  </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden print:border-black print:shadow-none">
+                  <div className="p-4 bg-slate-50 border-b border-slate-100 print:bg-white print:border-black">
+                      <h3 className="font-bold text-slate-900">Developer Net Reconciliation Schedule</h3>
+                      <p className="text-xs text-slate-500 mt-1">Net amounts reflect deduction of 5% Agency Commission from Gross Sale Price.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 border-b border-slate-200 print:bg-slate-100">
+                            <tr>
+                                <th className="px-6 py-3 font-bold text-slate-600">Stand</th>
+                                {!reconDevId && <th className="px-6 py-3 font-bold text-slate-600">Development</th>}
+                                <th className="px-6 py-3 font-bold text-slate-600">Client</th>
+                                <th className="px-6 py-3 font-bold text-right text-slate-600">Gross Price</th>
+                                <th className="px-6 py-3 font-bold text-right text-amber-600">Ag. Comm (5%)</th>
+                                <th className="px-6 py-3 font-bold text-right text-slate-900">Net Due</th>
+                                <th className="px-6 py-3 font-bold text-right text-green-600">Paid</th>
+                                <th className="px-6 py-3 font-bold text-right text-red-600">Bal (Net)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {reconData.rows.length === 0 ? (
+                                <tr><td colSpan={8} className="p-8 text-center text-slate-400 italic">No records found for the selected criteria.</td></tr>
+                            ) : (
+                                reconData.rows.map(row => (
+                                    <tr key={row.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-3 font-mono text-slate-900 font-medium">#{row.standNumber}</td>
+                                        {!reconDevId && <td className="px-6 py-3 text-slate-500">{row.devName}</td>}
+                                        <td className="px-6 py-3 text-slate-700">{row.clientName}</td>
+                                        <td className="px-6 py-3 text-right text-slate-500">${row.price.toLocaleString()}</td>
+                                        <td className="px-6 py-3 text-right text-amber-600 text-xs">-${row.agencyFee.toLocaleString()}</td>
+                                        <td className="px-6 py-3 text-right font-bold text-slate-900">${row.netToDev.toLocaleString()}</td>
+                                        <td className="px-6 py-3 text-right font-medium text-green-600">${row.paid.toLocaleString()}</td>
+                                        <td className="px-6 py-3 text-right font-bold font-mono">
+                                            {row.balance > 0 ? (
+                                                <span className="text-red-500">${row.balance.toLocaleString()}</span>
+                                            ) : (
+                                                <span className="text-slate-300">-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                        <tfoot className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200 print:bg-slate-100">
+                            <tr>
+                                <td colSpan={!reconDevId ? 3 : 2} className="px-6 py-3 text-right">TOTALS</td>
+                                <td className="px-6 py-3 text-right">${reconData.summary.totalExpected.toLocaleString()}</td>
+                                <td className="px-6 py-3 text-right text-amber-600">-${(reconData.summary.totalExpected * 0.05).toLocaleString()}</td>
+                                <td className="px-6 py-3 text-right">${reconData.summary.totalNetExpected.toLocaleString()}</td>
+                                <td className="px-6 py-3 text-right text-green-700">${reconData.summary.totalCollected.toLocaleString()}</td>
+                                <td className="px-6 py-3 text-right text-red-600">${reconData.summary.totalOutstanding.toLocaleString()}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                  </div>
               </div>
           </div>
       )}

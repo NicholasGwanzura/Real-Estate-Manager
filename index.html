@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -10,52 +11,107 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
+        color: #0f172a;
       }
-      /* Custom scrollbar for a premium feel */
+      
+      /* Premium Gradients & Utilities */
+      .bg-gradient-premium {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      }
+      .bg-gradient-dark {
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      }
+      .bg-gradient-amber {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+      }
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+      .glass-header {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+      }
+      
+      /* Card Premium */
+      .card-premium {
+        background: white;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .card-premium:hover {
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -2px rgba(0, 0, 0, 0.01);
+        transform: translateY(-2px);
+      }
+
+      /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f5f9;
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
         background: #cbd5e1;
-        border-radius: 4px;
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
       }
 
-      /* Premium Input Styles Utility Class */
+      /* Premium Input */
       .premium-input {
         display: block;
         width: 100%;
+        border: 0;
         border-bottom: 1px solid #cbd5e1;
         background-color: transparent;
-        padding: 0.625rem 0;
-        font-size: 0.875rem;
+        padding: 0.75rem 0;
+        font-size: 0.95rem;
         color: #0f172a;
-        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 150ms;
+        transition: all 0.2s ease;
       }
       .premium-input:focus {
-        border-bottom-color: #d97706; /* Amber 600 */
-        outline: 2px solid transparent;
-        outline-offset: 2px;
+        border-bottom-color: #d97706;
+        box-shadow: 0 1px 0 0 #d97706;
+        outline: none;
       }
       .premium-input::placeholder {
         color: #94a3b8;
+        font-weight: 300;
       }
       .premium-label {
         display: block;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.05em;
         color: #64748b;
         margin-bottom: 0.25rem;
+      }
+
+      /* Button Gradients */
+      .btn-gradient-dark {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+      }
+      .btn-gradient-dark:hover {
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+        transform: translateY(-1px);
+      }
+      .btn-gradient-amber {
+        background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+      }
+      .btn-gradient-amber:hover {
+        box-shadow: 0 6px 16px rgba(217, 119, 6, 0.3);
+        transform: translateY(-1px);
       }
 
       /* Print Styles */

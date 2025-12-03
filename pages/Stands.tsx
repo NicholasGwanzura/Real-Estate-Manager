@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { StandStatus, Stand, UserRole } from '../types';
-import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2 } from 'lucide-react';
+import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle } from 'lucide-react';
 
 export const Stands: React.FC = () => {
   const { stands, developers, sales, payments, clients, users, currentUser, deleteStand } = useApp();
@@ -10,6 +10,11 @@ export const Stands: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<StandStatus | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStand, setSelectedStand] = useState<Stand | null>(null);
+  
+  // Delete Modal State
+  const [deleteConfirm, setDeleteConfirm] = useState<{isOpen: boolean, id: string | null, number: string}>({
+      isOpen: false, id: null, number: ''
+  });
 
   const isAdmin = currentUser.role === UserRole.ADMIN;
 
@@ -31,10 +36,15 @@ export const Stands: React.FC = () => {
     setSearchTerm('');
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, stand: Stand) => {
       e.stopPropagation();
-      if(window.confirm("Delete this stand? This action cannot be undone and is logged.")) {
-          deleteStand(id);
+      setDeleteConfirm({ isOpen: true, id: stand.id, number: stand.standNumber });
+  };
+
+  const executeDelete = () => {
+      if (deleteConfirm.id) {
+          deleteStand(deleteConfirm.id);
+          setDeleteConfirm({ isOpen: false, id: null, number: '' });
       }
   };
 
@@ -153,7 +163,7 @@ export const Stands: React.FC = () => {
                  >
                     {isAdmin && stand.status === StandStatus.AVAILABLE && (
                         <button 
-                            onClick={(e) => handleDelete(e, stand.id)}
+                            onClick={(e) => handleDeleteClick(e, stand)}
                             className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors z-20 opacity-0 group-hover:opacity-100"
                             title="Delete Stand"
                         >
@@ -358,6 +368,39 @@ export const Stands: React.FC = () => {
                 </div>
             </div>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.isOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+              <div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-red-100">
+                  <div className="flex flex-col items-center text-center">
+                      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                          <AlertTriangle className="text-red-600" size={24} />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Confirm Deletion</h3>
+                      <p className="text-sm text-slate-500 mb-6">
+                          Are you sure you want to delete <span className="font-bold text-slate-900">Stand #{deleteConfirm.number}</span>? 
+                          This action cannot be undone and will be permanently logged.
+                      </p>
+                      
+                      <div className="flex gap-3 w-full">
+                          <button 
+                              onClick={() => setDeleteConfirm({ isOpen: false, id: null, number: '' })}
+                              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors"
+                          >
+                              Cancel
+                          </button>
+                          <button 
+                              onClick={executeDelete}
+                              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                          >
+                              Delete Stand
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );

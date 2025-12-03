@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { User, Developer, Stand, Sale, Payment, SalesAgreement, Commission, AuditLog, UserRole, StandStatus, AgreementStatus, Client, AgreementTemplate, AppNotification, Backup } from '../types';
 
 interface AppState {
@@ -17,6 +17,7 @@ interface AppState {
   notifications: AppNotification[];
   backups: Backup[];
   isAutoBackupEnabled: boolean;
+  isAuthenticated: boolean;
 }
 
 interface AppContextType extends AppState {
@@ -46,13 +47,16 @@ interface AppContextType extends AppState {
   createBackup: () => void;
   toggleAutoBackup: (enabled: boolean) => void;
   downloadBackup: (backupId?: string) => void;
+  login: (email: string, pass: string) => boolean;
+  logout: () => void;
+  register: (name: string, email: string, pass: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Initial Data - Clean Slate
 const INITIAL_USERS: User[] = [
-  { id: 'u1', name: 'System Admin', role: UserRole.ADMIN, email: 'admin@fineestate.com' }
+  { id: 'u1', name: 'System Admin', role: UserRole.ADMIN, email: 'admin', password: 'admin123' }
 ];
 
 const INITIAL_CLIENTS: Client[] = [];
@@ -64,30 +68,67 @@ const INITIAL_PAYMENTS: Payment[] = [];
 const INITIAL_TEMPLATES: AgreementTemplate[] = [];
 const INITIAL_NOTIFICATIONS: AppNotification[] = [];
 
+const STORAGE_KEY = 'FINE_ESTATE_DB_V1';
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User>(INITIAL_USERS[0]);
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
-  const [developers, setDevelopers] = useState<Developer[]>(INITIAL_DEVS);
-  const [stands, setStands] = useState<Stand[]>(INITIAL_STANDS);
-  const [sales, setSales] = useState<Sale[]>(INITIAL_SALES);
-  const [payments, setPayments] = useState<Payment[]>(INITIAL_PAYMENTS);
-  const [agreements, setAgreements] = useState<SalesAgreement[]>([]);
-  const [templates, setTemplates] = useState<AgreementTemplate[]>(INITIAL_TEMPLATES);
-  const [commissions, setCommissions] = useState<Commission[]>(INITIAL_COMMISSIONS);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
+  // Persistence Helper
+  const getPersistedState = <T,>(key: string, defaultValue: T): T => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed[key] !== undefined) {
+            return parsed[key];
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load persisted data:", err);
+    }
+    return defaultValue;
+  };
+
+  const [currentUser, setCurrentUser] = useState<User>(() => getPersistedState('currentUser', INITIAL_USERS[0]));
+  const [users, setUsers] = useState<User[]>(() => getPersistedState('users', INITIAL_USERS));
+  const [clients, setClients] = useState<Client[]>(() => getPersistedState('clients', INITIAL_CLIENTS));
+  const [developers, setDevelopers] = useState<Developer[]>(() => getPersistedState('developers', INITIAL_DEVS));
+  const [stands, setStands] = useState<Stand[]>(() => getPersistedState('stands', INITIAL_STANDS));
+  const [sales, setSales] = useState<Sale[]>(() => getPersistedState('sales', INITIAL_SALES));
+  const [payments, setPayments] = useState<Payment[]>(() => getPersistedState('payments', INITIAL_PAYMENTS));
+  const [agreements, setAgreements] = useState<SalesAgreement[]>(() => getPersistedState('agreements', []));
+  const [templates, setTemplates] = useState<AgreementTemplate[]>(() => getPersistedState('templates', INITIAL_TEMPLATES));
+  const [commissions, setCommissions] = useState<Commission[]>(() => getPersistedState('commissions', INITIAL_COMMISSIONS));
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getPersistedState('auditLogs', []));
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => getPersistedState('notifications', INITIAL_NOTIFICATIONS));
   const [currentPath, setCurrentPath] = useState('/');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => getPersistedState('isAuthenticated', false));
   
   // Backup State
-  const [backups, setBackups] = useState<Backup[]>([]);
-  const [isAutoBackupEnabled, setIsAutoBackupEnabled] = useState(false);
+  const [backups, setBackups] = useState<Backup[]>(() => getPersistedState('backups', []));
+  const [isAutoBackupEnabled, setIsAutoBackupEnabled] = useState(() => getPersistedState('isAutoBackupEnabled', false));
+
+  // Refs for consistent state in intervals/backups
+  const stateRef = useRef({ users, clients, developers, stands, sales, payments, agreements });
+
+  useEffect(() => {
+    stateRef.current = { users, clients, developers, stands, sales, payments, agreements };
+  }, [users, clients, developers, stands, sales, payments, agreements]);
+
+  // Persist State Effect
+  useEffect(() => {
+    const db = {
+        currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  }, [currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated]);
 
   // Auto Backup Effect (Hourly)
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (isAutoBackupEnabled) {
-      createBackup();
+      // Create initial backup when enabled
+      // We use a timeout to avoid collision with initial render
+      setTimeout(() => createBackup(), 1000);
+
       interval = setInterval(() => {
         createBackup();
       }, 3600000); 
@@ -95,9 +136,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearInterval(interval);
   }, [isAutoBackupEnabled]);
 
+  const login = (email: string, pass: string): boolean => {
+      // Find user by email (or username for admin) and password
+      const user = users.find(u => (u.email === email || (u.email === 'admin' && email === 'admin')) && u.password === pass);
+      if (user) {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          addLog('LOGIN', `User ${user.name} logged in`);
+          navigate('/');
+          return true;
+      }
+      return false;
+  };
+
+  const logout = () => {
+      addLog('LOGOUT', `User ${currentUser.name} logged out`);
+      setIsAuthenticated(false);
+      setCurrentUser(INITIAL_USERS[0]); // Reset to default just in case
+      navigate('/');
+  };
+
+  const register = (name: string, email: string, pass: string) => {
+      const newUser: User = {
+          id: `u-${Date.now()}`,
+          name,
+          email,
+          password: pass,
+          role: UserRole.AGENT // Default role for self-registration
+      };
+      setUsers([...users, newUser]);
+      setCurrentUser(newUser);
+      setIsAuthenticated(true);
+      addLog('REGISTER', `New user registered: ${name}`);
+      navigate('/');
+  };
+
   const createBackup = () => {
-    const recordCount = users.length + clients.length + developers.length + stands.length + sales.length;
-    const size = JSON.stringify({ users, clients, developers, stands, sales, payments, agreements }).length;
+    const currentState = stateRef.current;
+    const recordCount = currentState.users.length + currentState.clients.length + currentState.developers.length + currentState.stands.length + currentState.sales.length;
+    const size = JSON.stringify(currentState).length;
     
     const newBackup: Backup = {
       id: `bk-${Date.now()}`,
@@ -107,9 +184,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     
     setBackups(prev => [newBackup, ...prev].slice(0, 10)); // Keep last 10
-    if(currentUser.role === UserRole.ADMIN) {
-       triggerNotification('System Backup Created', `Automated backup ${newBackup.id} completed successfully.`, 'INFO', '/admin');
-    }
+    
+    // Only notify if we are in admin context, hard to check inside interval, so we skip notification for auto-backups to avoid spam
+    // Or we can check ref to current user if we tracked it.
   };
 
   const toggleAutoBackup = (enabled: boolean) => {
@@ -335,9 +412,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      currentUser, setCurrentUser, users, addUser, deleteUser, clients, addClient, deleteClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications, backups, isAutoBackupEnabled,
+      currentUser, setCurrentUser, users, addUser, deleteUser, clients, addClient, deleteClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications, backups, isAutoBackupEnabled, isAuthenticated,
       addDeveloper, addStand, deleteStand, addSale, cancelSale, addPayment, createAgreement, addTemplate, updateAgreementStatus, markCommissionPaid, addLog, getAgentPerformance, markNotificationRead, clearNotifications,
-      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup
+      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup, login, logout, register
     }}>
       {children}
     </AppContext.Provider>

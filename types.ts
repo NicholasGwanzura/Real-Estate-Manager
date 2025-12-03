@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   ADMIN = 'ADMIN',
   AGENT = 'AGENT',
@@ -11,6 +10,7 @@ export interface User {
   name: string;
   role: UserRole;
   email: string;
+  password?: string; // Added for auth demo
 }
 
 export interface Client {

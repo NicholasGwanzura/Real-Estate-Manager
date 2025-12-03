@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, User as UserIcon, LayoutGrid, Info, Calculator, Briefcase, Trash2, Edit2, X, Check } from 'lucide-react';
+import { Plus, User as UserIcon, LayoutGrid, Info, Calculator, Briefcase, Trash2, Edit2, X, Check, AlertTriangle } from 'lucide-react';
 import { StandStatus, Stand, UserRole, Developer } from '../types';
 
 export const Developers: React.FC = () => {
@@ -111,7 +112,18 @@ export const Developers: React.FC = () => {
         }
       }
 
+      let addedCount = 0;
+      let skippedCount = 0;
+
       for (let i = start; i <= end; i++) {
+        // Check for duplicates
+        const exists = stands.some(s => s.developerId === selectedDevId && s.standNumber === i.toString());
+        
+        if (exists) {
+            skippedCount++;
+            continue;
+        }
+
         const stand: Stand = {
           id: `${selectedDevId}-${i}`,
           standNumber: i.toString(),
@@ -123,13 +135,20 @@ export const Developers: React.FC = () => {
           financingTerms: resolvedFinancing || undefined
         };
         addStand(stand);
+        addedCount++;
       }
+      
       setBatchStart('');
       setBatchEnd('');
       setBatchPrice('');
       setBatchDeposit('');
       setBatchTerms('');
-      alert(`Added ${end - start + 1} stands!`);
+      
+      if (skippedCount > 0) {
+          alert(`Added ${addedCount} stands. Skipped ${skippedCount} duplicates.`);
+      } else {
+          alert(`Successfully generated ${addedCount} stands!`);
+      }
     }
   };
 
@@ -298,7 +317,11 @@ export const Developers: React.FC = () => {
             </div>
         </div>
         
-        <div className="mt-8 flex justify-end">
+        <div className="mt-8 flex justify-between items-center">
+             <div className="flex items-center text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                <AlertTriangle size={14} className="mr-2"/>
+                Duplicate stand numbers will be automatically skipped.
+             </div>
             <button onClick={handleBatchAddStands} className="bg-slate-900 text-white px-8 py-3 rounded-lg hover:bg-slate-800 text-sm font-bold shadow-lg shadow-slate-200 transition-all active:scale-95">
                 GENERATE STANDS
             </button>
