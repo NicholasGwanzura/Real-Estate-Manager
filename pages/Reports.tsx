@@ -2,14 +2,16 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Printer, TrendingUp, DollarSign, Wallet, Building2, Filter, AlertCircle, CheckCircle, ArrowUpDown, Trophy, Users, CalendarDays, Calendar } from 'lucide-react';
+import { Printer, TrendingUp, DollarSign, Wallet, Building2, Filter, AlertCircle, CheckCircle, ArrowUpDown, Trophy, Users, CalendarDays, Calendar, Layers, MapPin, Tag } from 'lucide-react';
 import { UserRole } from '../types';
 
 export const Reports: React.FC = () => {
   const { sales, developers, commissions, payments, stands, users } = useApp();
-  const [activeTab, setActiveTab] = useState<'sales' | 'finance' | 'commissions' | 'developments' | 'reconciliation' | 'agents' | 'weekly'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'finance' | 'commissions' | 'developments' | 'reconciliation' | 'agents' | 'weekly' | 'inventory'>('sales');
   const [reconDevId, setReconDevId] = useState<string>('');
   const [weeklyDevId, setWeeklyDevId] = useState<string>('');
+  const [inventoryDevId, setInventoryDevId] = useState<string>('');
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState<string>('ALL');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const handlePrint = () => {
@@ -41,6 +43,29 @@ export const Reports: React.FC = () => {
   // COMMISSIONS DATA
   const totalCommissions = commissions.reduce((acc, c) => acc + c.agentCommission, 0);
   const paidCommissions = commissions.filter(c => c.status === 'PAID').reduce((acc, c) => acc + c.agentCommission, 0);
+
+  // INVENTORY REPORT DATA
+  const getInventoryReportData = () => {
+      let filtered = stands;
+      if (inventoryDevId) filtered = filtered.filter(s => s.developerId === inventoryDevId);
+      if (inventoryStatusFilter !== 'ALL') filtered = filtered.filter(s => s.status === inventoryStatusFilter);
+
+      const totalValue = filtered.reduce((acc, s) => acc + s.price, 0);
+      const availableValue = filtered.filter(s => s.status === 'AVAILABLE').reduce((acc, s) => acc + s.price, 0);
+      const soldValue = filtered.filter(s => s.status === 'SOLD').reduce((acc, s) => acc + s.price, 0);
+      
+      return { 
+          rows: filtered, 
+          stats: { 
+              totalCount: filtered.length, 
+              totalValue, 
+              availableValue, 
+              soldValue,
+              availableCount: filtered.filter(s => s.status === 'AVAILABLE').length
+          } 
+      };
+  };
+  const inventoryData = getInventoryReportData();
 
   // WEEKLY REPORT DATA PROCESSING
   const getWeeklyReport = () => {
@@ -213,17 +238,22 @@ export const Reports: React.FC = () => {
       <div className="hidden print:block text-center mb-8 border-b border-black pb-4">
           <h1 className="text-2xl font-bold">Real Estate Plus Management Report</h1>
           <p className="text-sm">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+          {activeTab === 'inventory' && (
+              <p className="text-xs mt-1 uppercase font-bold tracking-widest border px-2 py-1 inline-block">
+                  Weekly Inventory Status - Week of {new Date().toLocaleDateString(undefined, {month:'short', day:'numeric', year: 'numeric'})}
+              </p>
+          )}
       </div>
 
       {/* Tabs */}
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit print:hidden overflow-x-auto">
-          {['sales', 'weekly', 'finance', 'commissions', 'agents', 'developments', 'reconciliation'].map((tab) => (
+          {['sales', 'weekly', 'finance', 'commissions', 'agents', 'developments', 'reconciliation', 'inventory'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1).replace('weekly', 'Weekly Sales')}
+                  {tab.charAt(0).toUpperCase() + tab.slice(1).replace('weekly', 'Weekly Sales').replace('inventory', 'Weekly Inventory')}
               </button>
           ))}
       </div>
@@ -634,6 +664,117 @@ export const Reports: React.FC = () => {
                               );
                           })}
                       </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* WEEKLY INVENTORY REPORT */}
+      {(activeTab === 'inventory') && (
+          <div className="space-y-6">
+              {/* Report Controls (Hidden on Print) */}
+              <div className="bg-white p-4 rounded-xl border border-slate-100 flex flex-col md:flex-row items-center justify-between print:hidden">
+                  <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6 w-full">
+                      <div className="flex items-center">
+                          <Layers className="text-slate-400 mr-2" size={20}/>
+                          <h3 className="font-bold text-slate-900 text-sm whitespace-nowrap">Report Config</h3>
+                      </div>
+                      <div className="flex-1 w-full md:w-auto">
+                          <select 
+                            className="bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
+                            value={inventoryDevId}
+                            onChange={(e) => setInventoryDevId(e.target.value)}
+                          >
+                            <option value="">All Developments</option>
+                            {developers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                      </div>
+                      <div className="flex-1 w-full md:w-auto">
+                          <select 
+                            className="bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
+                            value={inventoryStatusFilter}
+                            onChange={(e) => setInventoryStatusFilter(e.target.value)}
+                          >
+                            <option value="ALL">All Statuses</option>
+                            <option value="AVAILABLE">Available</option>
+                            <option value="SOLD">Sold</option>
+                            <option value="RESERVED">Reserved</option>
+                          </select>
+                      </div>
+                  </div>
+              </div>
+
+              {/* Stats Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm print:border-black print:shadow-none">
+                      <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Portfolio Value</p>
+                      <p className="text-xl font-bold text-slate-900 mt-1">${inventoryData.stats.totalValue.toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{inventoryData.stats.totalCount} Units</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm print:border-black print:shadow-none">
+                      <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Potential Revenue</p>
+                      <p className="text-xl font-bold text-green-600 mt-1">${inventoryData.stats.availableValue.toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{inventoryData.stats.availableCount} Available</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm print:border-black print:shadow-none">
+                      <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Sold Volume</p>
+                      <p className="text-xl font-bold text-slate-900 mt-1">${inventoryData.stats.soldValue.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm print:border-black print:shadow-none">
+                      <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Occupancy Rate</p>
+                      <p className="text-xl font-bold text-blue-600 mt-1">
+                          {inventoryData.stats.totalCount > 0 ? Math.round(((inventoryData.stats.totalCount - inventoryData.stats.availableCount) / inventoryData.stats.totalCount) * 100) : 0}%
+                      </p>
+                  </div>
+              </div>
+
+              {/* Detailed Inventory Table */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden print:border-black print:shadow-none">
+                  <div className="p-4 bg-slate-50 border-b border-slate-100 print:bg-white print:border-black">
+                      <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Detailed Stand Inventory</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                          <thead className="bg-slate-50 border-b border-slate-200 print:bg-slate-100 font-bold uppercase text-slate-600">
+                              <tr>
+                                  <th className="px-4 py-3">Stand #</th>
+                                  <th className="px-4 py-3">Development</th>
+                                  <th className="px-4 py-3">Status</th>
+                                  <th className="px-4 py-3 text-right">Size (m²)</th>
+                                  <th className="px-4 py-3 text-right">Price</th>
+                                  <th className="px-4 py-3 text-right">Deposit</th>
+                                  <th className="px-4 py-3 text-right">Terms</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                              {inventoryData.rows.length === 0 ? (
+                                  <tr><td colSpan={7} className="p-8 text-center text-slate-400 italic">No inventory found for selected criteria.</td></tr>
+                              ) : (
+                                  inventoryData.rows.map(stand => {
+                                      const dev = developers.find(d => d.id === stand.developerId);
+                                      return (
+                                          <tr key={stand.id} className="hover:bg-slate-50 print:break-inside-avoid">
+                                              <td className="px-4 py-2 font-bold text-slate-900">{stand.standNumber}</td>
+                                              <td className="px-4 py-2 text-slate-600">{dev?.name}</td>
+                                              <td className="px-4 py-2">
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                                      stand.status === 'AVAILABLE' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                      stand.status === 'SOLD' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                      'bg-amber-50 text-amber-700 border-amber-100'
+                                                  }`}>
+                                                      {stand.status}
+                                                  </span>
+                                              </td>
+                                              <td className="px-4 py-2 text-right font-mono text-slate-500">{stand.size}</td>
+                                              <td className="px-4 py-2 text-right font-mono font-medium text-slate-900">${stand.price.toLocaleString()}</td>
+                                              <td className="px-4 py-2 text-right text-slate-500">${stand.depositRequired?.toLocaleString() || '-'}</td>
+                                              <td className="px-4 py-2 text-right text-slate-500 truncate max-w-[150px]">{stand.financingTerms || 'None'}</td>
+                                          </tr>
+                                      );
+                                  })
+                              )}
+                          </tbody>
+                      </table>
                   </div>
               </div>
           </div>

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { StandStatus, Stand, UserRole } from '../types';
-import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle, Layers, Phone, Mail, ArrowRight } from 'lucide-react';
+import { Filter, Search, Building, XCircle, X, History, User, Calendar, DollarSign, CreditCard, FileText, Trash2, AlertTriangle, Layers, Phone, Mail, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 
 export const Stands: React.FC = () => {
   const { stands, developers, sales, payments, clients, users, currentUser, deleteStand } = useApp();
@@ -182,22 +182,28 @@ export const Stands: React.FC = () => {
          {filteredStands.map(stand => {
              const dev = developers.find(d => d.id === stand.developerId);
              
-             let statusColor = 'bg-white border-slate-200';
-             let statusBadge = 'bg-green-100 text-green-700';
+             let cardStyle = 'bg-white border-slate-200';
+             let statusBadgeClass = '';
+             let statusDotClass = '';
              
              if (stand.status === StandStatus.SOLD) {
-                 statusColor = 'bg-slate-50 border-slate-200 opacity-60';
-                 statusBadge = 'bg-slate-200 text-slate-600';
+                 cardStyle = 'bg-slate-50 border-slate-200 opacity-60';
+                 statusBadgeClass = 'bg-slate-200 text-slate-600 border-slate-300';
+                 statusDotClass = 'bg-slate-500';
              } else if (stand.status === StandStatus.RESERVED) {
-                 statusColor = 'bg-amber-50 border-amber-200';
-                 statusBadge = 'bg-amber-100 text-amber-700';
+                 cardStyle = 'bg-amber-50/30 border-amber-100';
+                 statusBadgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                 statusDotClass = 'bg-amber-500';
+             } else {
+                 statusBadgeClass = 'bg-green-50 text-green-700 border-green-100';
+                 statusDotClass = 'bg-green-500';
              }
 
              return (
                  <div 
                     key={stand.id} 
                     onClick={() => setSelectedStand(stand)}
-                    className={`rounded-xl border p-5 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer ${statusColor} group relative overflow-hidden`}
+                    className={`rounded-xl border p-6 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer ${cardStyle} group relative overflow-hidden`}
                  >
                     {isAdmin && stand.status === StandStatus.AVAILABLE && (
                         <button 
@@ -209,36 +215,44 @@ export const Stands: React.FC = () => {
                         </button>
                     )}
 
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                           <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${statusBadge}`}>
-                               {stand.status}
-                           </span>
-                           <h3 className="text-2xl font-bold text-slate-900 mt-2">#{stand.standNumber}</h3>
-                           <p className="text-xs text-slate-500 flex items-center mt-1 font-medium">
-                               <Building size={12} className="mr-1"/> {dev?.name}
-                           </p>
+                    {/* Header: Dev Name & Status */}
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-wider truncate max-w-[60%]">
+                            <Building size={10} className="mr-1.5 flex-shrink-0"/> <span className="truncate">{dev?.name}</span>
                         </div>
-                        <div className="text-right">
-                            <p className="text-lg font-bold text-slate-900">${stand.price.toLocaleString()}</p>
-                            <p className="text-xs text-slate-500 font-mono">{stand.size} m²</p>
+                        <div className={`flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border shadow-sm ${statusBadgeClass}`}>
+                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusDotClass}`}></div>
+                            {stand.status}
                         </div>
                     </div>
 
-                    <div className="space-y-2 mt-4 pt-4 border-t border-slate-200/50 text-xs text-slate-600">
-                        <div className="flex justify-between">
+                    {/* Main Info */}
+                    <div className="flex justify-between items-end mb-5">
+                        <div>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Stand No.</span>
+                            <h3 className="text-3xl font-bold text-slate-900 leading-none tracking-tight">#{stand.standNumber}</h3>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-lg font-bold text-slate-900 leading-tight">${stand.price.toLocaleString()}</p>
+                            <p className="text-xs text-slate-500 font-mono bg-slate-100/80 px-1.5 py-0.5 rounded inline-block mt-1">{stand.size} m²</p>
+                        </div>
+                    </div>
+
+                    {/* Details Footer */}
+                    <div className="space-y-2 pt-3 border-t border-slate-200/50 text-xs text-slate-600">
+                        <div className="flex justify-between items-center">
                             <span className="text-slate-400 font-medium">Deposit Req:</span>
                             <span className="font-bold text-slate-700">{stand.depositRequired ? `$${stand.depositRequired.toLocaleString()}` : 'N/A'}</span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                             <span className="text-slate-400 font-medium">Financing:</span>
-                            <span className="font-bold text-slate-700 truncate max-w-[150px]">{stand.financingTerms || 'None'}</span>
+                            <span className="font-bold text-slate-700 truncate max-w-[140px]" title={stand.financingTerms}>{stand.financingTerms || 'None'}</span>
                         </div>
                     </div>
                     
                     {/* Hover Hint */}
-                    <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                        <span className="bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">View History</span>
+                    <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
+                        <span className="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">View History</span>
                     </div>
                  </div>
              );
@@ -267,14 +281,14 @@ export const Stands: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">Stand #{selectedStand.standNumber} History</h2>
-                            <p className="text-sm text-slate-500 flex items-center">
+                            <p className="text-sm text-slate-500 flex items-center mt-1">
                                 <Building size={14} className="mr-1"/> 
                                 {developers.find(d => d.id === selectedStand.developerId)?.name}
                                 <span className="mx-2 text-slate-300">|</span>
-                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                    selectedStand.status === 'SOLD' ? 'bg-slate-200 text-slate-600' :
-                                    selectedStand.status === 'RESERVED' ? 'bg-amber-100 text-amber-700' :
-                                    'bg-green-100 text-green-700'
+                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                    selectedStand.status === 'SOLD' ? 'bg-slate-200 text-slate-600 border-slate-300' :
+                                    selectedStand.status === 'RESERVED' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                    'bg-green-100 text-green-700 border-green-200'
                                 }`}>{selectedStand.status}</span>
                             </p>
                         </div>
@@ -320,7 +334,7 @@ export const Stands: React.FC = () => {
                                                         <div>
                                                             <div className="flex items-center space-x-2">
                                                                 <p className="font-bold text-slate-900 text-lg">{client?.name || sale.clientName}</p>
-                                                                {sale.status === 'CANCELLED' && <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 rounded-full">CANCELLED</span>}
+                                                                {sale.status === 'CANCELLED' && <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 rounded-full border border-red-200">CANCELLED</span>}
                                                             </div>
                                                             <p className="text-xs text-slate-500 mt-1">Sold by Agent: {agent?.name || 'Unknown'}</p>
                                                         </div>
