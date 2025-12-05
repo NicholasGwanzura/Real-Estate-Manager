@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
-import { User, Developer, Stand, Sale, Payment, SalesAgreement, Commission, AuditLog, UserRole, StandStatus, AgreementStatus, Client, AgreementTemplate, AppNotification, Backup } from '../types';
+import { User, Developer, Stand, Sale, Payment, SalesAgreement, Commission, AuditLog, UserRole, StandStatus, AgreementStatus, Client, AgreementTemplate, AppNotification, Backup, ReleaseNote } from '../types';
 
 interface AppState {
   currentUser: User;
@@ -16,6 +16,7 @@ interface AppState {
   auditLogs: AuditLog[];
   notifications: AppNotification[];
   backups: Backup[];
+  releaseNotes: ReleaseNote[];
   isAutoBackupEnabled: boolean;
   isAuthenticated: boolean;
 }
@@ -51,24 +52,187 @@ interface AppContextType extends AppState {
   login: (email: string, pass: string) => boolean;
   logout: () => void;
   register: (name: string, email: string, pass: string) => void;
+  addReleaseNote: (note: ReleaseNote) => void;
   lastSaved: Date;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Initial Data - Clean Slate
+// --- MOCK DATA SEEDING (Zimbabwe Context) ---
+
 const INITIAL_USERS: User[] = [
-  { id: 'u1', name: 'System Admin', role: UserRole.ADMIN, email: 'admin', password: 'admin123' }
+  { id: 'u1', name: 'System Admin', role: UserRole.ADMIN, email: 'admin', password: 'admin123' },
+  { id: 'u2', name: 'Sarah Mahachi', role: UserRole.AGENT, email: 'sarah@fineestate.co.zw', password: 'password' },
+  { id: 'u3', name: 'Tonderai Gumbo', role: UserRole.AGENT, email: 'tonderai@fineestate.co.zw', password: 'password' }
 ];
 
-const INITIAL_CLIENTS: Client[] = [];
-const INITIAL_DEVS: Developer[] = [];
-const INITIAL_STANDS: Stand[] = [];
-const INITIAL_SALES: Sale[] = [];
-const INITIAL_COMMISSIONS: Commission[] = [];
-const INITIAL_PAYMENTS: Payment[] = [];
+const INITIAL_DEVS: Developer[] = [
+  { id: 'dev1', name: 'WestProp Holdings', contactPerson: 'Michael M.', email: 'sales@westprop.co.zw', totalStands: 150, depositTerms: '30%', financingTerms: '12 Months Interest Free', mandateHolderId: 'u2' },
+  { id: 'dev2', name: 'ZimRe Properties', contactPerson: 'Rudo N.', email: 'info@zimre.co.zw', totalStands: 300, depositTerms: '$5000 Fixed', financingTerms: '36 Months @ 12% p.a', mandateHolderId: 'u3' },
+  { id: 'dev3', name: 'Shelter Zimbabwe', contactPerson: 'Francis B.', email: 'projects@shelter.co.zw', totalStands: 500, depositTerms: '25%', financingTerms: '24 Months', mandateHolderId: 'u2' }
+];
+
+const INITIAL_CLIENTS: Client[] = [
+  { id: 'c1', name: 'Tendai Mhofu', email: 'tendai.m@gmail.com', phone: '0772123456', idNumber: '63-123456-F-12', address: '12 Samora Machel Ave, Harare', dateAdded: '2023-08-15' },
+  { id: 'c2', name: 'Farai Gwaradzimba', email: 'farai.g@hotmail.com', phone: '0712987654', idNumber: '42-987654-H-42', address: '45 Borrowdale Brooke', dateAdded: '2023-09-01' },
+  { id: 'c3', name: 'Chipo Moyo', email: 'chipo.moyo@yahoo.com', phone: '0733555444', idNumber: '29-555444-Y-29', address: '56 Jason Moyo, Bulawayo', dateAdded: '2023-09-10' },
+  { id: 'c4', name: 'Kudzai Tsvangirai', email: 'kudzai.t@gmail.com', phone: '0774000111', idNumber: '63-000111-K-63', address: '89 The Grange, Harare', dateAdded: '2023-09-20' },
+  { id: 'c5', name: 'Blessing Dube', email: 'b.dube@corporate.co.zw', phone: '0782222333', idNumber: '08-222333-B-08', address: '12 Hillside, Bulawayo', dateAdded: '2023-10-01' },
+  { id: 'c6', name: 'Nyasha Zhou', email: 'nyasha.z@gmail.com', phone: '0773999888', idNumber: '48-999888-N-48', address: '15 Highlands, Harare', dateAdded: '2023-10-15' },
+  { id: 'c7', name: 'Tinashe Mutasa', email: 'tinashe.m@outlook.com', phone: '0712777666', idNumber: '75-777666-T-75', address: '33 Greystone Park', dateAdded: '2023-11-01' },
+  { id: 'c8', name: 'Simba Chiwenga', email: 'simba.c@gmail.com', phone: '0772333222', idNumber: '63-333222-S-63', address: '14 Glen Lorne, Harare', dateAdded: '2023-11-05' },
+  { id: 'c9', name: 'Rudo Katsande', email: 'rudo.k@gmail.com', phone: '0733111000', idNumber: '50-111000-R-50', address: '90 Avondale, Harare', dateAdded: '2023-11-20' },
+  { id: 'c10', name: 'Tanaka Biti', email: 'tanaka.b@gmail.com', phone: '0774555666', idNumber: '24-555666-T-24', address: '22 Mt Pleasant', dateAdded: '2023-12-01' },
+  { id: 'c11', name: 'Mercy Ndlovu', email: 'mercy.n@gmail.com', phone: '0712888999', idNumber: '08-888999-M-08', address: '5 Famona, Bulawayo', dateAdded: '2023-12-10' },
+  { id: 'c12', name: 'John Doe (Investor)', email: 'john.d@invest.com', phone: '0772000000', idNumber: '63-000000-J-63', address: '101 Rolf Valley', dateAdded: '2024-01-05' }
+];
+
+// Generate Stands
+const generateStands = () => {
+  const stands: Stand[] = [];
+  // WestProp (High Value) - Pokugara
+  for(let i=100; i<=115; i++) {
+    stands.push({ id: `wp-${i}`, standNumber: i.toString(), developerId: 'dev1', price: 120000, size: 2000, status: StandStatus.AVAILABLE, depositRequired: 36000, financingTerms: '12 Months Interest Free' });
+  }
+  // ZimRe (Mid Range) - Ruwa
+  for(let i=500; i<=530; i++) {
+    stands.push({ id: `zr-${i}`, standNumber: i.toString(), developerId: 'dev2', price: 45000, size: 800, status: StandStatus.AVAILABLE, depositRequired: 5000, financingTerms: '36 Months @ 12% p.a' });
+  }
+  // Shelter (Affordable) - Sunway
+  for(let i=1200; i<=1250; i++) {
+    stands.push({ id: `sz-${i}`, standNumber: i.toString(), developerId: 'dev3', price: 25000, size: 400, status: StandStatus.AVAILABLE, depositRequired: 6250, financingTerms: '24 Months' });
+  }
+  return stands;
+};
+
+const INITIAL_STANDS = generateStands();
+
+// Sales & Payments seeding
+const seedTransactions = (stands: Stand[]) => {
+    const sales: Sale[] = [];
+    const payments: Payment[] = [];
+    const commissions: Commission[] = [];
+    
+    // Helper to create transaction
+    const createTrans = (
+        clientIdx: number, 
+        standId: string, 
+        saleDate: string, 
+        amountPaid: number, 
+        isFinished: boolean,
+        agentId: string = 'u2'
+    ) => {
+        const stand = stands.find(s => s.id === standId);
+        if(!stand) return;
+        const client = INITIAL_CLIENTS[clientIdx];
+        
+        // Update stand status
+        stand.status = StandStatus.SOLD;
+        
+        const saleId = `sale-${Date.now()}-${clientIdx}`;
+        const totalComm = stand.price * 0.05;
+        const agentComm = stand.price * 0.025;
+
+        sales.push({
+            id: saleId,
+            standId: stand.id,
+            developerId: stand.developerId,
+            agentId: agentId,
+            clientId: client.id,
+            clientName: client.name,
+            saleDate: saleDate,
+            salePrice: stand.price,
+            depositPaid: stand.depositRequired || 0,
+            status: 'COMPLETED'
+        });
+
+        commissions.push({
+            id: `comm-${saleId}`,
+            saleId: saleId,
+            agentId: agentId,
+            standId: stand.id,
+            salePrice: stand.price,
+            totalAgencyCommission: totalComm,
+            agentCommission: agentComm,
+            status: isFinished ? 'PAID' : 'PENDING',
+            dateCreated: saleDate
+        });
+
+        // Add Payments
+        // 1. Deposit
+        payments.push({
+            id: `pay-${saleId}-dep`,
+            saleId: saleId,
+            amount: stand.depositRequired || (stand.price * 0.25),
+            date: saleDate,
+            reference: `DEP-${Math.floor(Math.random()*10000)}`,
+            manualReceiptNo: `BK-${Math.floor(Math.random()*1000)}`,
+            type: 'DEPOSIT'
+        });
+
+        // 2. Installments if applicable
+        const remaining = amountPaid - (stand.depositRequired || 0);
+        if (remaining > 0) {
+             const installments = isFinished ? 1 : 3; 
+             const amtPerInst = remaining / installments;
+             
+             for(let k=1; k<=installments; k++) {
+                 // dates 1 month apart
+                 const pDate = new Date(saleDate);
+                 pDate.setMonth(pDate.getMonth() + k);
+                 
+                 payments.push({
+                    id: `pay-${saleId}-inst-${k}`,
+                    saleId: saleId,
+                    amount: amtPerInst,
+                    date: pDate.toISOString().split('T')[0],
+                    reference: `INST-${Math.floor(Math.random()*10000)}`,
+                    manualReceiptNo: `BK-${Math.floor(Math.random()*1000)+1000}`,
+                    type: k === installments && isFinished ? 'FULL_PAYMENT' : 'INSTALLMENT'
+                 });
+             }
+        }
+    };
+
+    // --- WestProp Sales ---
+    createTrans(0, 'wp-100', '2023-08-20', 120000, true, 'u2'); // Tendai (Paid Full)
+    createTrans(1, 'wp-101', '2023-09-05', 50000, false, 'u2'); // Farai (Active)
+    createTrans(11, 'wp-105', '2024-01-15', 36000, false, 'u3'); // Investor (New, Deposit Only)
+
+    // --- ZimRe Sales ---
+    createTrans(2, 'zr-500', '2023-09-12', 45000, true, 'u3'); // Chipo (Paid Full)
+    createTrans(3, 'zr-501', '2023-09-25', 10000, false, 'u3'); // Kudzai (Active)
+    createTrans(4, 'zr-502', '2023-10-05', 5000, false, 'u2'); // Blessing (Arrears - only deposit paid long ago)
+    createTrans(5, 'zr-510', '2023-12-01', 15000, false, 'u2'); // Nyasha (Active)
+
+    // --- Shelter Sales ---
+    createTrans(6, 'sz-1200', '2023-11-02', 25000, true, 'u2'); // Tinashe (Paid Full)
+    createTrans(7, 'sz-1201', '2023-11-10', 12000, false, 'u3'); // Simba (Active)
+    createTrans(8, 'sz-1202', '2023-12-05', 6250, false, 'u2'); // Rudo (New)
+    createTrans(9, 'sz-1203', '2024-01-20', 6250, false, 'u3'); // Tanaka (New)
+
+    return { sales, payments, commissions };
+};
+
+const { sales: INITIAL_SALES, payments: INITIAL_PAYMENTS, commissions: INITIAL_COMMISSIONS } = seedTransactions(INITIAL_STANDS);
+
 const INITIAL_TEMPLATES: AgreementTemplate[] = [];
-const INITIAL_NOTIFICATIONS: AppNotification[] = [];
+const INITIAL_NOTIFICATIONS: AppNotification[] = [
+    { id: 'n1', title: 'System Update', message: 'Database populated with Zimbabwe Mock Data.', type: 'INFO', timestamp: new Date().toISOString(), read: false }
+];
+
+const INITIAL_RELEASE_NOTES: ReleaseNote[] = [
+    {
+        id: 'rn-1.4.2',
+        version: "v1.4.2",
+        date: new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        features: [
+            { feature: "System Data", detail: "Populated database with Zimbabwe Real Estate data (WestProp, ZimRe, Shelter)." },
+            { feature: "Reporting", detail: "Added 'Weekly Sales Report' module for tracking developer cashflow." },
+            { feature: "Agent Performance", detail: "Added Agent Performance Leaderboard with sortable metrics." }
+        ]
+    }
+];
 
 const STORAGE_KEY = 'FINE_ESTATE_DB_V1';
 
@@ -101,6 +265,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [commissions, setCommissions] = useState<Commission[]>(() => getPersistedState('commissions', INITIAL_COMMISSIONS));
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getPersistedState('auditLogs', []));
   const [notifications, setNotifications] = useState<AppNotification[]>(() => getPersistedState('notifications', INITIAL_NOTIFICATIONS));
+  const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>(() => getPersistedState('releaseNotes', INITIAL_RELEASE_NOTES));
   const [currentPath, setCurrentPath] = useState('/');
   const [isAuthenticated, setIsAuthenticated] = useState(() => getPersistedState('isAuthenticated', false));
   
@@ -131,11 +296,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!isInitialized) return;
 
     const db = {
-        currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated
+        currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, releaseNotes, isAutoBackupEnabled, isAuthenticated
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
     setLastSaved(new Date());
-  }, [currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, isAutoBackupEnabled, isAuthenticated, isInitialized]);
+  }, [currentUser, users, clients, developers, stands, sales, payments, agreements, templates, commissions, auditLogs, notifications, backups, releaseNotes, isAutoBackupEnabled, isAuthenticated, isInitialized]);
 
   // Auto Backup Effect (Hourly)
   useEffect(() => {
@@ -211,7 +376,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         generatedBy: currentUser.name
       },
       data: {
-        users, clients, developers, stands, sales, payments, agreements, commissions, templates, auditLogs, notifications, backups
+        users, clients, developers, stands, sales, payments, agreements, commissions, templates, auditLogs, notifications, backups, releaseNotes
       }
     };
 
@@ -243,6 +408,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (db.agreements && Array.isArray(db.agreements)) setAgreements(db.agreements);
         if (db.commissions && Array.isArray(db.commissions)) setCommissions(db.commissions);
         if (db.auditLogs && Array.isArray(db.auditLogs)) setAuditLogs(db.auditLogs);
+        if (db.releaseNotes && Array.isArray(db.releaseNotes)) setReleaseNotes(db.releaseNotes);
         
         addLog('DATA_IMPORT', 'Database restored from backup file');
         return true;
@@ -250,6 +416,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.error("Import failed", e);
         return false;
     }
+  };
+
+  const addReleaseNote = (note: ReleaseNote) => {
+      setReleaseNotes(prev => [note, ...prev]);
+      triggerNotification('System Update', `New version ${note.version} notes released.`, 'INFO', '/');
   };
 
   const addLog = (action: string, details: string) => {
@@ -343,7 +514,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
      if(sales.some(s => s.standId === id && s.status !== 'CANCELLED')) {
         alert("Cannot delete stand that has been sold.");
         return;
-     }
+    }
      const stand = stands.find(s => s.id === id);
      setStands(prev => prev.filter(s => s.id !== id));
      addLog('DELETE_STAND', `Deleted stand #${stand?.standNumber}`);
@@ -449,9 +620,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      currentUser, setCurrentUser, users, addUser, deleteUser, clients, addClient, deleteClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications, backups, isAutoBackupEnabled, isAuthenticated,
+      currentUser, setCurrentUser, users, addUser, deleteUser, clients, addClient, deleteClient, developers, updateDeveloper, deleteDeveloper, stands, sales, payments, agreements, commissions, auditLogs, templates, notifications, backups, releaseNotes, isAutoBackupEnabled, isAuthenticated,
       addDeveloper, addStand, deleteStand, addSale, cancelSale, addPayment, createAgreement, addTemplate, updateAgreementStatus, markCommissionPaid, addLog, getAgentPerformance, markNotificationRead, clearNotifications,
-      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup, importDatabase, login, logout, register, lastSaved
+      currentPath, navigate, createBackup, toggleAutoBackup, downloadBackup, importDatabase, addReleaseNote, login, logout, register, lastSaved
     }}>
       {children}
     </AppContext.Provider>

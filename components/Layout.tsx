@@ -75,11 +75,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="p-6 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-dark rounded-xl flex items-center justify-center shadow-lg shadow-slate-200 ring-4 ring-white">
-                <span className="text-amber-500 font-bold text-xl">F</span>
+                <span className="text-amber-500 font-bold text-xl">R</span>
               </div>
               <div>
-                <span className="block text-lg font-bold text-slate-900 tracking-tight leading-none">FineEstate</span>
-                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Manager</span>
+                <span className="block text-lg font-bold text-slate-900 tracking-tight leading-none">Real Estate</span>
+                <span className="text-[10px] text-amber-600 uppercase tracking-widest font-bold ml-0.5">Plus</span>
               </div>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
@@ -167,7 +167,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 >
                     <Menu size={24} />
                 </button>
-                <span className="font-bold text-slate-900 lg:hidden text-lg">FineEstate</span>
+                <span className="font-bold text-slate-900 lg:hidden text-lg">Real Estate Plus</span>
             </div>
             
             <div className="flex items-center space-x-4">

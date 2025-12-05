@@ -141,7 +141,7 @@ export const Agreements: React.FC = () => {
         <body>
           <div class="header">
             <h1>Agreement of Sale</h1>
-            <p>${dev?.name} | FineEstate Management</p>
+            <p>${dev?.name} | Real Estate Plus</p>
           </div>
           
           <div class="content">${agreement.content}</div>

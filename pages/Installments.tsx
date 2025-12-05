@@ -122,7 +122,7 @@ export const Installments: React.FC = () => {
         </head>
         <body>
           <div class="header">
-            <div class="logo">FineEstate</div>
+            <div class="logo">Real Estate Plus</div>
             <p>Official Payment Receipt</p>
           </div>
 

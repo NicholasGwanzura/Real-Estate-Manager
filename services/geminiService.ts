@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { User, Sale, Developer, Stand, Payment } from '../types';
 
@@ -35,7 +36,7 @@ export const analyzeSalesData = async (
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `You are an intelligent data analyst for a real estate company called "FineEstate".
+      contents: `You are an intelligent data analyst for a real estate company called "Real Estate Plus".
       
       Here is the current database in JSON format:
       ${context}

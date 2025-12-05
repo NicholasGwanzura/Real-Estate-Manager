@@ -55,7 +55,7 @@ export const Finance: React.FC = () => {
           </head>
           <body>
             <div class="header">
-              <div class="logo">FineEstate</div>
+              <div class="logo">Real Estate Plus</div>
               <div class="subtitle">Official Payment Receipt</div>
             </div>
 
@@ -102,7 +102,7 @@ export const Finance: React.FC = () => {
 
             <div class="footer">
               <p>Thank you for your payment.</p>
-              <p>FineEstate Management Systems | Generated: ${new Date().toISOString()}</p>
+              <p>Real Estate Plus Management Systems | Generated: ${new Date().toISOString()}</p>
             </div>
             <script>window.onload = function() { window.print(); }</script>
           </body>
@@ -145,7 +145,7 @@ export const Finance: React.FC = () => {
         </head>
         <body>
           <div class="header">
-             <div class="logo">FineEstate Financial Services</div>
+             <div class="logo">Real Estate Plus Financial Services</div>
              <p>Statement of Account</p>
           </div>
 
@@ -202,7 +202,7 @@ export const Finance: React.FC = () => {
 
           <div class="footer">
              <p>This is a computer-generated document. No signature is required.</p>
-             <p>FineEstate Management Systems</p>
+             <p>Real Estate Plus Management Systems</p>
           </div>
           <script>window.onload = function() { window.print(); }</script>
         </body>

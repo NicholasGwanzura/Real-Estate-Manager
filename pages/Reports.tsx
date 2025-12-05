@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Printer, TrendingUp, DollarSign, Wallet, Building2, Filter, AlertCircle, CheckCircle } from 'lucide-react';
+import { Printer, TrendingUp, DollarSign, Wallet, Building2, Filter, AlertCircle, CheckCircle, ArrowUpDown, Trophy, Users, CalendarDays, Calendar } from 'lucide-react';
+import { UserRole } from '../types';
 
 export const Reports: React.FC = () => {
-  const { sales, developers, commissions, payments, stands } = useApp();
-  const [activeTab, setActiveTab] = useState<'sales' | 'finance' | 'commissions' | 'developments' | 'reconciliation'>('sales');
+  const { sales, developers, commissions, payments, stands, users } = useApp();
+  const [activeTab, setActiveTab] = useState<'sales' | 'finance' | 'commissions' | 'developments' | 'reconciliation' | 'agents' | 'weekly'>('sales');
   const [reconDevId, setReconDevId] = useState<string>('');
+  const [weeklyDevId, setWeeklyDevId] = useState<string>('');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const handlePrint = () => {
     window.print();
@@ -38,6 +41,104 @@ export const Reports: React.FC = () => {
   // COMMISSIONS DATA
   const totalCommissions = commissions.reduce((acc, c) => acc + c.agentCommission, 0);
   const paidCommissions = commissions.filter(c => c.status === 'PAID').reduce((acc, c) => acc + c.agentCommission, 0);
+
+  // WEEKLY REPORT DATA PROCESSING
+  const getWeeklyReport = () => {
+      // 1. Filter Sales by Developer
+      const filteredSales = weeklyDevId ? sales.filter(s => s.developerId === weeklyDevId && s.status !== 'CANCELLED') : sales.filter(s => s.status !== 'CANCELLED');
+      
+      // 2. Helper to get Week Start Date (Monday)
+      const getWeekStart = (dateStr: string) => {
+          const d = new Date(dateStr);
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+          const weekStart = new Date(d.setDate(diff));
+          return weekStart.toISOString().split('T')[0];
+      };
+
+      // 3. Aggregate
+      const weeks: Record<string, { weekStart: string, salesCount: number, grossValue: number, collected: number }> = {};
+
+      filteredSales.forEach(sale => {
+          const weekKey = getWeekStart(sale.saleDate);
+          if (!weeks[weekKey]) weeks[weekKey] = { weekStart: weekKey, salesCount: 0, grossValue: 0, collected: 0 };
+          
+          weeks[weekKey].salesCount += 1;
+          weeks[weekKey].grossValue += sale.salePrice;
+      });
+
+      // Add payments aggregation (mapped by sale date week, or payment date week? Usually payment date for cashflow)
+      // Let's do Cashflow view: When was money collected?
+      const filteredPayments = payments.filter(p => {
+          const sale = sales.find(s => s.id === p.saleId);
+          return weeklyDevId ? sale?.developerId === weeklyDevId : true;
+      });
+
+      filteredPayments.forEach(pay => {
+           const weekKey = getWeekStart(pay.date);
+           if (!weeks[weekKey]) weeks[weekKey] = { weekStart: weekKey, salesCount: 0, grossValue: 0, collected: 0 };
+           weeks[weekKey].collected += pay.amount;
+      });
+
+      // Convert to array and sort
+      return Object.values(weeks).sort((a,b) => b.weekStart.localeCompare(a.weekStart));
+  };
+  
+  const weeklyData = getWeeklyReport();
+
+  // AGENT DATA PROCESSING
+  const agentStats = useMemo(() => {
+    const agents = users.filter(u => u.role === UserRole.AGENT);
+    return agents.map(agent => {
+        const agentSales = sales.filter(s => s.agentId === agent.id && s.status !== 'CANCELLED');
+        const totalValue = agentSales.reduce((acc, s) => acc + s.salePrice, 0);
+        const units = agentSales.length;
+        const agentComms = commissions.filter(c => c.agentId === agent.id);
+        const totalComm = agentComms.reduce((acc, c) => acc + c.agentCommission, 0);
+        
+        // Calculate Average Sale Price
+        const avgSale = units > 0 ? totalValue / units : 0;
+
+        return { 
+            id: agent.id, 
+            name: agent.name, 
+            email: agent.email,
+            totalValue, 
+            units, 
+            totalComm,
+            avgSale
+        };
+    });
+  }, [users, sales, commissions]);
+
+  const sortedAgents = useMemo(() => {
+    let sortableItems = [...agentStats];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        // @ts-ignore
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        // @ts-ignore
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    } else {
+        // Default sort by Total Value Desc
+        sortableItems.sort((a,b) => b.totalValue - a.totalValue);
+    }
+    return sortableItems;
+  }, [agentStats, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   // RECONCILIATION DATA
   const getReconData = () => {
@@ -110,19 +211,19 @@ export const Reports: React.FC = () => {
       </div>
 
       <div className="hidden print:block text-center mb-8 border-b border-black pb-4">
-          <h1 className="text-2xl font-bold">FineEstate Management Report</h1>
+          <h1 className="text-2xl font-bold">Real Estate Plus Management Report</h1>
           <p className="text-sm">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
       </div>
 
       {/* Tabs */}
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit print:hidden overflow-x-auto">
-          {['sales', 'finance', 'commissions', 'developments', 'reconciliation'].map((tab) => (
+          {['sales', 'weekly', 'finance', 'commissions', 'agents', 'developments', 'reconciliation'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab.charAt(0).toUpperCase() + tab.slice(1).replace('weekly', 'Weekly Sales')}
               </button>
           ))}
       </div>
@@ -365,6 +466,96 @@ export const Reports: React.FC = () => {
                   </div>
               </div>
           </div>
+      )}
+
+      {/* AGENTS REPORT */}
+      {(activeTab === 'agents') && (
+        <div className="space-y-6">
+            {/* Agent Summary Cards */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 print:border-black print:shadow-none flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-slate-500 uppercase tracking-wide font-bold">Top Performing Agent</p>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1">{sortedAgents[0]?.name || 'N/A'}</h3>
+                        <p className="text-xs text-green-600 font-bold mt-1">
+                            ${sortedAgents[0]?.totalValue.toLocaleString() || 0} Sales Volume
+                        </p>
+                    </div>
+                    <div className="bg-amber-100 p-4 rounded-full text-amber-600">
+                        <Trophy size={28} />
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 print:border-black print:shadow-none flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-slate-500 uppercase tracking-wide font-bold">Total Sales Force</p>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1">{agentStats.length} Agents</h3>
+                        <p className="text-xs text-blue-600 font-bold mt-1">
+                            {sales.length} Active Deals Closed
+                        </p>
+                    </div>
+                    <div className="bg-blue-100 p-4 rounded-full text-blue-600">
+                        <Users size={28} />
+                    </div>
+                </div>
+             </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden print:border-black print:shadow-none">
+                <div className="p-4 bg-slate-50 border-b border-slate-100 print:bg-white print:border-black">
+                    <h3 className="font-bold text-slate-900">Agent Performance Breakdown</h3>
+                    <p className="text-xs text-slate-500 mt-1">Click table headers to sort by metric.</p>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 border-b border-slate-200 print:bg-slate-100">
+                            <tr>
+                                <th className="px-6 py-4 font-bold text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => requestSort('name')}>
+                                    <div className="flex items-center">Agent Name <ArrowUpDown size={12} className="ml-1 opacity-40"/></div>
+                                </th>
+                                <th className="px-6 py-4 font-bold text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors text-right" onClick={() => requestSort('units')}>
+                                    <div className="flex items-center justify-end">Units Sold <ArrowUpDown size={12} className="ml-1 opacity-40"/></div>
+                                </th>
+                                <th className="px-6 py-4 font-bold text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors text-right" onClick={() => requestSort('totalValue')}>
+                                    <div className="flex items-center justify-end">Total Sales Value <ArrowUpDown size={12} className="ml-1 opacity-40"/></div>
+                                </th>
+                                <th className="px-6 py-4 font-bold text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors text-right" onClick={() => requestSort('avgSale')}>
+                                    <div className="flex items-center justify-end">Avg. Deal Size <ArrowUpDown size={12} className="ml-1 opacity-40"/></div>
+                                </th>
+                                <th className="px-6 py-4 font-bold text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors text-right" onClick={() => requestSort('totalComm')}>
+                                    <div className="flex items-center justify-end">Commission Earned <ArrowUpDown size={12} className="ml-1 opacity-40"/></div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {sortedAgents.length === 0 ? (
+                                <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">No agent data available.</td></tr>
+                            ) : (
+                                sortedAgents.map((agent, index) => (
+                                    <tr key={agent.id} className={`hover:bg-slate-50 ${index < 3 ? 'bg-amber-50/20' : ''}`}>
+                                        <td className="px-6 py-4 font-medium text-slate-900 flex items-center">
+                                            {index === 0 && <Trophy size={14} className="text-amber-500 mr-2" />}
+                                            {agent.name}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-slate-600 font-bold">{agent.units}</td>
+                                        <td className="px-6 py-4 text-right font-mono text-slate-900 font-medium">${agent.totalValue.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right font-mono text-slate-500">${Math.round(agent.avgSale).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right font-mono text-green-600 font-bold">${agent.totalComm.toLocaleString()}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                        <tfoot className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200 print:bg-slate-100">
+                            <tr>
+                                <td className="px-6 py-4">TOTALS</td>
+                                <td className="px-6 py-4 text-right">{sales.length}</td>
+                                <td className="px-6 py-4 text-right">${totalSalesValue.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-right">-</td>
+                                <td className="px-6 py-4 text-right text-green-700">${totalCommissions.toLocaleString()}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
       )}
 
       {/* COMMISSIONS REPORT */}

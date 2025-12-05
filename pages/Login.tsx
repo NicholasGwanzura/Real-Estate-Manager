@@ -68,9 +68,9 @@ export const Login: React.FC = () => {
             {/* Logo Section */}
             <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-dark text-amber-500 text-3xl font-bold shadow-xl mb-4 ring-4 ring-white">
-                    F
+                    R
                 </div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">FineEstate</h1>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Real Estate Plus</h1>
                 <p className="text-slate-500 text-sm font-medium tracking-wide uppercase mt-1">Management Suite</p>
             </div>
 
@@ -177,7 +177,7 @@ export const Login: React.FC = () => {
                                     <input 
                                         type="email" 
                                         className="premium-input pl-10" 
-                                        placeholder="john@fineestate.com"
+                                        placeholder="john@realestateplus.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                     />
@@ -268,7 +268,7 @@ export const Login: React.FC = () => {
             </div>
             
             <div className="text-center mt-6 text-[10px] text-slate-400 font-medium">
-                &copy; {new Date().getFullYear()} FineEstate Management Systems. v1.0.2
+                &copy; {new Date().getFullYear()} Real Estate Plus Systems. v1.0.2
             </div>
         </div>
     </div>

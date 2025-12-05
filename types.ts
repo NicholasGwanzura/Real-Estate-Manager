@@ -141,3 +141,10 @@ export interface Backup {
   size: string;
   recordCount: number;
 }
+
+export interface ReleaseNote {
+  id: string;
+  version: string;
+  date: string;
+  features: { feature: string; detail: string; }[];
+}

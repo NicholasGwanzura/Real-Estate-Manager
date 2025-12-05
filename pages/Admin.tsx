@@ -1,17 +1,24 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Shield, UserPlus, FileText, Search, Activity, Database, Download, Clock, CheckCircle, Trash2, User as UserIcon, UploadCloud, AlertTriangle } from 'lucide-react';
+import { Shield, UserPlus, FileText, Search, Activity, Database, Download, Clock, CheckCircle, Trash2, User as UserIcon, UploadCloud, AlertTriangle, Megaphone, PlusCircle } from 'lucide-react';
 import { User, UserRole } from '../types';
 
 export const Admin: React.FC = () => {
-  const { auditLogs, users, addUser, deleteUser, backups, isAutoBackupEnabled, toggleAutoBackup, createBackup, downloadBackup, importDatabase } = useApp();
-  const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'backup'>('users');
+  const { auditLogs, users, addUser, deleteUser, backups, isAutoBackupEnabled, toggleAutoBackup, createBackup, downloadBackup, importDatabase, releaseNotes, addReleaseNote } = useApp();
+  const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'backup' | 'updates'>('users');
   
   // New User State
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>(UserRole.AGENT);
+
+  // Release Note State
+  const [rnVersion, setRnVersion] = useState('');
+  const [rnFeature1, setRnFeature1] = useState('');
+  const [rnDetail1, setRnDetail1] = useState('');
+  const [rnFeature2, setRnFeature2] = useState('');
+  const [rnDetail2, setRnDetail2] = useState('');
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +58,30 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const publishReleaseNote = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!rnVersion || !rnFeature1) return;
+
+      const features = [];
+      if (rnFeature1) features.push({ feature: rnFeature1, detail: rnDetail1 });
+      if (rnFeature2) features.push({ feature: rnFeature2, detail: rnDetail2 });
+
+      addReleaseNote({
+          id: `rn-${Date.now()}`,
+          version: rnVersion,
+          date: new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          features
+      });
+
+      // Reset
+      setRnVersion('');
+      setRnFeature1('');
+      setRnDetail1('');
+      setRnFeature2('');
+      setRnDetail2('');
+      alert("Release Note Published! It will now appear on all user dashboards.");
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -73,6 +104,12 @@ export const Admin: React.FC = () => {
             onClick={() => setActiveTab('backup')}
          >
             <Database size={16} className="mr-2"/> Backups & Data
+         </button>
+         <button 
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center whitespace-nowrap ${activeTab === 'updates' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+            onClick={() => setActiveTab('updates')}
+         >
+            <Megaphone size={16} className="mr-2"/> System Updates
          </button>
          <button 
             className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center whitespace-nowrap ${activeTab === 'audit' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
@@ -287,6 +324,108 @@ export const Admin: React.FC = () => {
         </div>
       )}
 
+      {/* UPDATES TAB */}
+      {activeTab === 'updates' && (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              <div className="xl:col-span-1 space-y-6">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                      <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
+                          <PlusCircle size={20} className="mr-2 text-amber-500"/> Draft Release Note
+                      </h2>
+                      <form onSubmit={publishReleaseNote} className="space-y-5">
+                          <div>
+                              <label className="premium-label">Version Number</label>
+                              <input 
+                                className="premium-input" 
+                                placeholder="e.g. v2.0.1" 
+                                value={rnVersion}
+                                onChange={(e) => setRnVersion(e.target.value)}
+                                required
+                              />
+                          </div>
+                          
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-3 block">Update Highlights</label>
+                              
+                              <div className="mb-4">
+                                  <input 
+                                    className="w-full text-sm font-bold text-slate-900 bg-transparent border-b border-slate-200 focus:border-amber-500 outline-none pb-1 mb-1 placeholder-slate-400" 
+                                    placeholder="Feature 1 Title"
+                                    value={rnFeature1}
+                                    onChange={(e) => setRnFeature1(e.target.value)}
+                                    required
+                                  />
+                                  <textarea 
+                                    className="w-full text-xs text-slate-600 bg-transparent border-0 focus:ring-0 p-0 resize-none placeholder-slate-400"
+                                    placeholder="Description details..."
+                                    rows={2}
+                                    value={rnDetail1}
+                                    onChange={(e) => setRnDetail1(e.target.value)}
+                                  />
+                              </div>
+
+                              <div>
+                                  <input 
+                                    className="w-full text-sm font-bold text-slate-900 bg-transparent border-b border-slate-200 focus:border-amber-500 outline-none pb-1 mb-1 placeholder-slate-400" 
+                                    placeholder="Feature 2 Title (Optional)"
+                                    value={rnFeature2}
+                                    onChange={(e) => setRnFeature2(e.target.value)}
+                                  />
+                                  <textarea 
+                                    className="w-full text-xs text-slate-600 bg-transparent border-0 focus:ring-0 p-0 resize-none placeholder-slate-400"
+                                    placeholder="Description details..."
+                                    rows={2}
+                                    value={rnDetail2}
+                                    onChange={(e) => setRnDetail2(e.target.value)}
+                                  />
+                              </div>
+                          </div>
+
+                          <button className="w-full btn-gradient-dark text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-all shadow-lg hover:translate-y-[-1px]">
+                              Publish Update
+                          </button>
+                      </form>
+                  </div>
+              </div>
+
+              <div className="xl:col-span-2">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                      <div className="p-6 border-b border-slate-100">
+                          <h2 className="text-lg font-bold text-slate-900">Release History</h2>
+                          <p className="text-sm text-slate-500">Log of all system updates broadcasted to users.</p>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                          {releaseNotes.length === 0 ? (
+                              <div className="p-8 text-center text-slate-400 italic">No release notes published yet.</div>
+                          ) : (
+                              releaseNotes.map(rn => (
+                                  <div key={rn.id} className="p-6 hover:bg-slate-50 transition-colors">
+                                      <div className="flex justify-between items-center mb-4">
+                                          <div className="flex items-center">
+                                              <span className="bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded shadow-sm mr-3">{rn.version}</span>
+                                              <span className="text-sm text-slate-500 flex items-center font-mono"><Clock size={12} className="mr-1.5"/> {rn.date}</span>
+                                          </div>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                          {rn.features.map((f, idx) => (
+                                              <div key={idx} className="flex items-start">
+                                                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                                  <div>
+                                                      <p className="text-sm font-bold text-slate-900">{f.feature}</p>
+                                                      <p className="text-xs text-slate-500 leading-relaxed">{f.detail}</p>
+                                                  </div>
+                                              </div>
+                                          ))}
+                                      </div>
+                                  </div>
+                              ))
+                          )}
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* AUDIT TAB */}
       {activeTab === 'audit' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -302,7 +441,7 @@ export const Admin: React.FC = () => {
                         <tr>
                             <th className="px-6 py-4 font-bold">Timestamp</th>
                             <th className="px-6 py-4 font-bold">Action</th>
-                            <th className="px-6 py-4 font-bold">User ID</th>
+                            <th className="px-6 py-4 font-bold">User</th>
                             <th className="px-6 py-4 font-bold">Details</th>
                         </tr>
                     </thead>
@@ -310,16 +449,24 @@ export const Admin: React.FC = () => {
                         {auditLogs.length === 0 ? (
                             <tr><td colSpan={4} className="p-12 text-center text-slate-400 italic">No logs recorded yet.</td></tr>
                         ) : (
-                            auditLogs.map(log => (
-                                <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4 text-slate-500 font-mono text-xs whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
-                                    <td className="px-6 py-4 font-bold text-slate-800">
-                                        <span className="px-2 py-1 rounded bg-slate-100 text-[10px] tracking-wide uppercase border border-slate-200">{log.action}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">{log.userId}</td>
-                                    <td className="px-6 py-4 text-slate-600">{log.details}</td>
-                                </tr>
-                            ))
+                            auditLogs.map(log => {
+                                const actor = users.find(u => u.id === log.userId);
+                                return (
+                                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-6 py-4 text-slate-500 font-mono text-xs whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
+                                        <td className="px-6 py-4 font-bold text-slate-800">
+                                            <span className="px-2 py-1 rounded bg-slate-100 text-[10px] tracking-wide uppercase border border-slate-200">{log.action}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-900 font-bold text-xs">{actor?.name || 'Unknown User'}</span>
+                                                <span className="text-slate-400 font-mono text-[10px]">{log.userId}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-600">{log.details}</td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
